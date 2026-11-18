@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.example.employee_management.dto.EmployeeRequest;
@@ -18,6 +20,10 @@ import com.example.employee_management.repository.EmployeeRepository;
 
 @Service
 public class EmployeeService {
+
+	// SLF4J API; Spring Boot uses Logback behind it. The level per profile is set in application-dev.yml / -prod.yml.
+	// Logs contain only ids, never names or emails (personal data).
+	private static final Logger logger = LoggerFactory.getLogger(EmployeeService.class);
 
 	private final EmployeeRepository employeeRepository;
 	private final DepartmentRepository departmentRepository;
@@ -60,42 +66,54 @@ public class EmployeeService {
 
 	// Throws DepartmentNotFoundException (-> 400) or DuplicateEmailException (-> 409)
 	public EmployeeResponse addEmployee(EmployeeRequest request) {
+		logger.debug("Adding employee: departmentId={}", request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
 		String email = normalizeEmail(request.getEmail());
 		if (employeeRepository.existsByEmail(email)) {
+			logger.warn("Cannot add employee: email is already used");
 			throw new DuplicateEmailException(email);
 		}
 		Employee employee = new Employee(utilityService.formatName(request.getName()), email, department);
 		// INSERT; the database gives the id
-		return toResponse(employeeRepository.save(employee));
+		Employee saved = employeeRepository.save(employee);
+		logger.info("Employee added: id={}, departmentId={}", saved.getId(), department.getId());
+		return toResponse(saved);
 	}
 
 	// Throws DepartmentNotFoundException (-> 400), EmployeeNotFoundException (-> 404)
 	// or DuplicateEmailException (-> 409), checked in that order
 	public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
+		logger.debug("Updating employee: id={}, departmentId={}", id, request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
 		Employee employee = findEmployee(id);
 		String email = normalizeEmail(request.getEmail());
 		if (employeeRepository.existsByEmailAndIdNot(email, id)) {
+			logger.warn("Cannot update employee id={}: email is already used by another employee", id);
 			throw new DuplicateEmailException(email);
 		}
 		employee.setName(utilityService.formatName(request.getName()));
 		employee.setEmail(email);
 		employee.setDepartment(department);
-		return toResponse(employeeRepository.save(employee));
+		Employee saved = employeeRepository.save(employee);
+		logger.info("Employee updated: id={}, departmentId={}", saved.getId(), department.getId());
+		return toResponse(saved);
 	}
 
 	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
 	public void deleteEmployee(Long id) {
+		logger.debug("Deleting employee: id={}", id);
 		if (!employeeRepository.existsById(id)) {
+			logger.warn("Cannot delete employee id={}: not found", id);
 			throw new EmployeeNotFoundException(id);
 		}
 		employeeRepository.deleteById(id);
+		logger.info("Employee deleted: id={}", id);
 	}
 
 	private Employee findEmployee(Long id) {
 		Optional<Employee> found = employeeRepository.findById(id);
 		if (found.isEmpty()) {
+			logger.warn("Employee not found: id={}", id);
 			throw new EmployeeNotFoundException(id);
 		}
 		return found.get();
@@ -104,6 +122,7 @@ public class EmployeeService {
 	private Department findDepartment(Long departmentId) {
 		Optional<Department> found = departmentRepository.findById(departmentId);
 		if (found.isEmpty()) {
+			logger.warn("Department not found: id={}", departmentId);
 			throw new DepartmentNotFoundException(departmentId);
 		}
 		return found.get();

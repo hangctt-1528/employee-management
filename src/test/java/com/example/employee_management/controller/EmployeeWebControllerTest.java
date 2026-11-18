@@ -2,6 +2,7 @@ package com.example.employee_management.controller;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,7 +21,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +39,7 @@ import com.example.employee_management.service.EmployeeService;
 
 // @WebMvcTest also starts Thymeleaf, so the tests check the view name, the model and the rendered HTML.
 @WebMvcTest(EmployeeWebController.class)
+@ExtendWith(OutputCaptureExtension.class) // lets a test method take CapturedOutput (what was printed to the console)
 class EmployeeWebControllerTest {
 
 	@Autowired
@@ -265,6 +270,20 @@ class EmployeeWebControllerTest {
 				.andExpect(view().name("error"))
 				.andExpect(content().string(containsString("Unexpected error, please try again later")))
 				.andExpect(content().string(not(containsString("secret database detail"))));
+	}
+
+	// Lab 7: the details of a 500 go to the log (ERROR + stack trace), not to the page
+	@Test
+	void unexpectedErrorIsLoggedAsError(CapturedOutput output) throws Exception {
+		when(employeeService.getAllEmployees()).thenThrow(new RuntimeException("secret database detail"));
+
+		mockMvc.perform(get("/employees/list"))
+				.andExpect(status().isInternalServerError());
+
+		String log = output.getOut();
+		assertTrue(log.contains("ERROR"));
+		assertTrue(log.contains("Unexpected error on GET /employees/list"));
+		assertTrue(log.contains("secret database detail"));
 	}
 
 }

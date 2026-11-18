@@ -1,0 +1,21 @@
+# Profile "dev": run on your machine against the MySQL from `docker compose up -d db` (port 3307).
+# Development values only.
+spring:
+  datasource:
+    url: "${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/employee_db?allowPublicKeyRetrieval=true&useSSL=false}"
+    username: "${SPRING_DATASOURCE_USERNAME:employee}"
+    password: "${SPRING_DATASOURCE_PASSWORD:employee}"
+  jpa:
+    hibernate:
+      # Create / update the tables from the @Entity classes
+      ddl-auto: update
+    # SQL is logged through Logback instead, see logging.level.org.hibernate.SQL
+    show-sql: false
+  thymeleaf:
+    # Reload templates without restarting the app
+    cache: false
+
+logging:
+  level:
+    com.example.employee_management: DEBUG
+    org.hibernate.SQL: DEBUG

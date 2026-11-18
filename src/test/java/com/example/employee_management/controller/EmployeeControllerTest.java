@@ -1,5 +1,6 @@
 package com.example.employee_management.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,7 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -36,6 +40,7 @@ import com.example.employee_management.service.EmployeeService;
 // Tests the HTTP layer: the controller, @Valid and GlobalExceptionHandler
 // (@WebMvcTest also loads @ControllerAdvice classes). The service is a Mockito mock.
 @WebMvcTest(EmployeeController.class)
+@ExtendWith(OutputCaptureExtension.class) // lets a test method take CapturedOutput (what was printed to the console)
 class EmployeeControllerTest {
 
 	private static final String VALID_BODY = "{\"name\":\"nguyen van an\",\"email\":\"an@example.com\",\"departmentId\":1}";
@@ -286,6 +291,20 @@ class EmployeeControllerTest {
 		mockMvc.perform(get("/api/employees/1"))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.message").value("Unexpected error, please try again later"));
+	}
+
+	// Lab 7: the details of a 500 go to the log (ERROR + stack trace), not to the client
+	@Test
+	void unexpectedErrorIsLoggedAsError(CapturedOutput output) throws Exception {
+		when(employeeService.getEmployeeById(1L)).thenThrow(new RuntimeException("secret database detail"));
+
+		mockMvc.perform(get("/api/employees/1"))
+				.andExpect(status().isInternalServerError());
+
+		String log = output.getOut();
+		assertTrue(log.contains("ERROR"));
+		assertTrue(log.contains("Unexpected error on GET /api/employees/1"));
+		assertTrue(log.contains("secret database detail"));
 	}
 
 }
