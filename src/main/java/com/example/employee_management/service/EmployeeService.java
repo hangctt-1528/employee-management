@@ -10,6 +10,9 @@ import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.entity.Department;
 import com.example.employee_management.entity.Employee;
+import com.example.employee_management.exception.DepartmentNotFoundException;
+import com.example.employee_management.exception.DuplicateEmailException;
+import com.example.employee_management.exception.EmployeeNotFoundException;
 import com.example.employee_management.repository.DepartmentRepository;
 import com.example.employee_management.repository.EmployeeRepository;
 
@@ -50,72 +53,66 @@ public class EmployeeService {
 		return toResponseList(employees);
 	}
 
-	// Returns null when not found; the controller turns that into 404
+	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
 	public EmployeeResponse getEmployeeById(Long id) {
-		Optional<Employee> employee = employeeRepository.findById(id);
-		if (employee.isEmpty()) {
-			return null;
-		}
-		return toResponse(employee.get());
+		return toResponse(findEmployee(id));
 	}
 
-	public boolean departmentExists(Long departmentId) {
-		return departmentRepository.existsById(departmentId);
-	}
-
-	public boolean employeeExists(Long id) {
-		return employeeRepository.existsById(id);
-	}
-
-	public boolean emailExists(String email) {
-		return employeeRepository.existsByEmail(normalizeEmail(email));
-	}
-
-	// For update: the email belongs to an employee other than this one
-	public boolean emailUsedByOther(String email, Long id) {
-		return employeeRepository.existsByEmailAndIdNot(normalizeEmail(email), id);
-	}
-
-	// Returns null when the department does not exist (the controller normally checks it first)
+	// Throws DepartmentNotFoundException (-> 400) or DuplicateEmailException (-> 409)
 	public EmployeeResponse addEmployee(EmployeeRequest request) {
-		Optional<Department> department = departmentRepository.findById(request.getDepartmentId());
-		if (department.isEmpty()) {
-			return null;
+		Department department = findDepartment(request.getDepartmentId());
+		String email = normalizeEmail(request.getEmail());
+		if (employeeRepository.existsByEmail(email)) {
+			throw new DuplicateEmailException(email);
 		}
-		Employee employee = new Employee(utilityService.formatName(request.getName()),
-				normalizeEmail(request.getEmail()), department.get());
-
+		Employee employee = new Employee(utilityService.formatName(request.getName()), email, department);
 		// INSERT; the database gives the id
 		return toResponse(employeeRepository.save(employee));
 	}
 
-	// Returns null when the employee or the department does not exist
+	// Throws DepartmentNotFoundException (-> 400), EmployeeNotFoundException (-> 404)
+	// or DuplicateEmailException (-> 409), checked in that order
 	public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
-		Optional<Employee> found = employeeRepository.findById(id);
-		Optional<Department> department = departmentRepository.findById(request.getDepartmentId());
-		if (found.isEmpty() || department.isEmpty()) {
-			return null;
+		Department department = findDepartment(request.getDepartmentId());
+		Employee employee = findEmployee(id);
+		String email = normalizeEmail(request.getEmail());
+		if (employeeRepository.existsByEmailAndIdNot(email, id)) {
+			throw new DuplicateEmailException(email);
 		}
-		Employee employee = found.get();
 		employee.setName(utilityService.formatName(request.getName()));
-		employee.setEmail(normalizeEmail(request.getEmail()));
-		employee.setDepartment(department.get());
+		employee.setEmail(email);
+		employee.setDepartment(department);
 		return toResponse(employeeRepository.save(employee));
+	}
+
+	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
+	public void deleteEmployee(Long id) {
+		if (!employeeRepository.existsById(id)) {
+			throw new EmployeeNotFoundException(id);
+		}
+		employeeRepository.deleteById(id);
+	}
+
+	private Employee findEmployee(Long id) {
+		Optional<Employee> found = employeeRepository.findById(id);
+		if (found.isEmpty()) {
+			throw new EmployeeNotFoundException(id);
+		}
+		return found.get();
+	}
+
+	private Department findDepartment(Long departmentId) {
+		Optional<Department> found = departmentRepository.findById(departmentId);
+		if (found.isEmpty()) {
+			throw new DepartmentNotFoundException(departmentId);
+		}
+		return found.get();
 	}
 
 	// Emails are stored in lower case, so "An@Example.com" and "an@example.com" are the same
 	// on both MySQL (case-insensitive) and H2 (case-sensitive)
 	private String normalizeEmail(String email) {
 		return email.trim().toLowerCase();
-	}
-
-	// Returns false when the employee does not exist
-	public boolean deleteEmployee(Long id) {
-		if (!employeeRepository.existsById(id)) {
-			return false;
-		}
-		employeeRepository.deleteById(id);
-		return true;
 	}
 
 	private List<EmployeeResponse> toResponseList(List<Employee> employees) {
