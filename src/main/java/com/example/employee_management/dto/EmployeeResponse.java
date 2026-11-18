@@ -4,18 +4,20 @@ package com.example.employee_management.dto;
 public class EmployeeResponse {
 
 	private Long id;
-	private String code;
 	private String name;
 	private String email;
+	private Long departmentId;
+	private String departmentName;
 
 	public EmployeeResponse() {
 	}
 
-	public EmployeeResponse(Long id, String code, String name, String email) {
+	public EmployeeResponse(Long id, String name, String email, Long departmentId, String departmentName) {
 		this.id = id;
-		this.code = code;
 		this.name = name;
 		this.email = email;
+		this.departmentId = departmentId;
+		this.departmentName = departmentName;
 	}
 
 	public Long getId() {
@@ -24,14 +26,6 @@ public class EmployeeResponse {
 
 	public void setId(Long id) {
 		this.id = id;
-	}
-
-	public String getCode() {
-		return code;
-	}
-
-	public void setCode(String code) {
-		this.code = code;
 	}
 
 	public String getName() {
@@ -48,6 +42,22 @@ public class EmployeeResponse {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	public Long getDepartmentId() {
+		return departmentId;
+	}
+
+	public void setDepartmentId(Long departmentId) {
+		this.departmentId = departmentId;
+	}
+
+	public String getDepartmentName() {
+		return departmentName;
+	}
+
+	public void setDepartmentName(String departmentName) {
+		this.departmentName = departmentName;
 	}
 
 }
