@@ -179,7 +179,7 @@ class EmployeeControllerTest {
 		mockMvc.perform(post("/api/employees").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"name\":\"an\",\"email\":\"an@example.com\"}"))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.fieldErrors.departmentId").value("Department id is required"));
+				.andExpect(jsonPath("$.fieldErrors.departmentId").value("Department is required"));
 	}
 
 	@Test

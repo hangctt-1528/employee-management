@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!-- Error page for the web pages. Used by EmployeeWebController's @ExceptionHandler methods,
+     and by Spring Boot's /error page when a browser asks for HTML. -->
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Error</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:replace="~{fragments :: header}"></nav>
+
+<h1>
+    <span th:text="${status}">500</span>
+    <span th:text="${error}">Internal Server Error</span>
+</h1>
+<p th:if="${message}" th:text="${message}">Something went wrong.</p>
+<p th:if="${path}">Path: <span th:text="${path}">/employees/list</span></p>
+
+<a th:href="@{/employees/list}">Back to the employee list</a>
+</body>
+</html>

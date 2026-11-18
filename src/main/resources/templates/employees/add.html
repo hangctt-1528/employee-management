@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Add employee</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:replace="~{fragments :: header}"></nav>
+
+<h1>Add employee</h1>
+
+<!-- th:object binds the form to the "employee" model attribute (an EmployeeRequest).
+     th:field="*{name}" sets the input's name, id and value from employee.name. -->
+<form th:action="@{/employees/add}" th:object="${employee}" method="post">
+    <div class="field">
+        <label for="name">Name</label>
+        <input type="text" th:field="*{name}">
+        <span class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name error</span>
+    </div>
+
+    <div class="field">
+        <label for="email">Email</label>
+        <input type="text" th:field="*{email}">
+        <span class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Email error</span>
+    </div>
+
+    <div class="field">
+        <label for="departmentId">Department</label>
+        <select th:field="*{departmentId}">
+            <option value="">-- Select a department --</option>
+            <option th:each="department : ${departments}"
+                    th:value="${department.id}"
+                    th:text="${department.name}">IT</option>
+        </select>
+        <span class="error" th:if="${#fields.hasErrors('departmentId')}" th:errors="*{departmentId}">Department error</span>
+    </div>
+
+    <button type="submit">Save</button>
+    <a th:href="@{/employees/list}">Cancel</a>
+</form>
+</body>
+</html>

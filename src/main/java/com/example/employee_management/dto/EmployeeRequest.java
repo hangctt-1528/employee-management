@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-// JSON body of POST / PUT /api/employees,
-// e.g. {"name": "nguyen van an", "email": "an@example.com", "departmentId": 1}
-// The constraints are checked by @Valid in EmployeeController (Lab 5).
+// JSON body of POST / PUT /api/employees, e.g. {"name": "nguyen van an", "email": "an@example.com", "departmentId": 1},
+// and also the form object of /employees/add (Lab 6).
+// The constraints are checked by @Valid in EmployeeController (Lab 5) and EmployeeWebController (Lab 6).
 public class EmployeeRequest {
 
 	// @NotBlank rejects null, "" and "   " (@NotNull would only reject null)
@@ -20,10 +20,11 @@ public class EmployeeRequest {
 	@Size(max = 100, message = "Email must be at most 100 characters")
 	private String email;
 
-	@NotNull(message = "Department id is required")
+	@NotNull(message = "Department is required")
 	private Long departmentId;
 
-	// Jackson needs the empty constructor and the setters to read the JSON body
+	// Jackson (JSON body) and data binding (form fields) both create the object with
+	// the empty constructor and fill it with the setters
 	public EmployeeRequest() {
 	}
 

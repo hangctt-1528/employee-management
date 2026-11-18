@@ -1,6 +1,6 @@
 # Employee Management
 
-Spring Boot 4 practice project (Java 25): REST API for employees and departments, stored in MySQL with Spring Data JPA.
+Spring Boot 4 practice project (Java 25): web pages (Thymeleaf) and a REST API for employees and departments, stored in MySQL with Spring Data JPA.
 
 ## Prerequisite
 
@@ -18,6 +18,7 @@ The first build downloads Maven dependencies and the MySQL image, so it takes a 
 ## URL and port
 
 - App: http://localhost:8080
+- Web pages: http://localhost:8080/employees/list (see [Web pages](#web-pages))
 - Hello API: http://localhost:8080/hello returns `Hello, Employee Management!`
 - MySQL: `localhost:3307` (inside Docker: `db:3306`), database `employee_db`, user `employee` / password `employee` (development only)
 - Default accounts: none yet.
@@ -39,6 +40,18 @@ SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3307/employee_db?allowPublicKeyRet
 ```
 
 Emails are stored in lower case, so `An@Example.com` and `an@example.com` count as the same email.
+
+## Web pages
+
+Open in a browser:
+
+| URL | Page |
+|---|---|
+| http://localhost:8080/employees/list | Table of all employees |
+| http://localhost:8080/employees/add | Form to add an employee; invalid data is shown under each field |
+| http://localhost:8080/employees/search | Search by name and/or department, with the results below the form |
+
+Errors on these pages are shown as an HTML error page.
 
 ## API
 
@@ -85,7 +98,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/employees -Content
 
 ## Errors
 
-Every error returns the same JSON shape:
+Every error of the REST API (`/api/...`, and unknown URLs) returns the same JSON shape:
 
 ```json
 {
