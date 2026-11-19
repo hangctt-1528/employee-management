@@ -26,10 +26,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.employee_management.config.JwtConfig;
+import com.example.employee_management.config.SecurityConfig;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.exception.DepartmentNotFoundException;
@@ -40,6 +44,8 @@ import com.example.employee_management.service.EmployeeService;
 // Tests the HTTP layer: the controller, @Valid and GlobalExceptionHandler
 // (@WebMvcTest also loads @ControllerAdvice classes). The service is a Mockito mock.
 @WebMvcTest(EmployeeController.class)
+@Import({ SecurityConfig.class, JwtConfig.class }) // Lab 9: our security rules, not the default ones
+@WithMockUser(roles = "ADMIN") // every request runs as a logged-in ADMIN unless a test says otherwise
 @ExtendWith(OutputCaptureExtension.class) // lets a test method take CapturedOutput (what was printed to the console)
 class EmployeeControllerTest {
 

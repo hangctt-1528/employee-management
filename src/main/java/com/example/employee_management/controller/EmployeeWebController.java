@@ -3,6 +3,7 @@ package com.example.employee_management.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -97,6 +98,12 @@ public class EmployeeWebController {
 	public ModelAndView handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
 		return showError(HttpStatus.BAD_REQUEST,
 				"Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'", request);
+	}
+
+	// From @PreAuthorize; without it the Exception handler below would show 500
+	@ExceptionHandler(AccessDeniedException.class)
+	public ModelAndView handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+		return showError(HttpStatus.FORBIDDEN, AuthWebController.ACCESS_DENIED_MESSAGE, request);
 	}
 
 	@ExceptionHandler(Exception.class)

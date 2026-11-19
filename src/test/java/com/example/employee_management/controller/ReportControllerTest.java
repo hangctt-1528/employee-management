@@ -11,13 +11,19 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.employee_management.config.JwtConfig;
+import com.example.employee_management.config.SecurityConfig;
 import com.example.employee_management.dto.EmployeeCountResponse;
 import com.example.employee_management.service.ReportService;
 
 @WebMvcTest(ReportController.class)
+@Import({ SecurityConfig.class, JwtConfig.class }) // Lab 9: our security rules, not the default ones
+@WithMockUser(roles = "ADMIN") // every request runs as a logged-in ADMIN unless a test says otherwise
 class ReportControllerTest {
 
 	@Autowired

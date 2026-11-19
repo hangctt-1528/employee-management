@@ -21,9 +21,15 @@ management:
     web:
       exposure:
         # Actuator endpoints open over HTTP (same port 8080). Never use "*": env and heapdump show secrets.
-        # Lab 9 will protect them.
+        # SecurityConfig: health is open, the others need ADMIN.
         include: health,metrics,caches,scheduledtasks
   endpoint:
     health:
-      # Show db / diskSpace in /actuator/health (no login yet; Lab 9: when-authorized)
-      show-details: always
+      # Details only for ADMIN; others see {"status":"UP"}
+      show-details: when-authorized
+      roles: ADMIN
+
+app:
+  security:
+    # JWT lifetime (1 hour)
+    jwt-expiration-seconds: 3600

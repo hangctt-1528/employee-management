@@ -16,7 +16,11 @@ import org.springframework.test.context.ActiveProfiles;
 		"spring.datasource.url=jdbc:h2:mem:prod_profile_db;MODE=MySQL;DB_CLOSE_DELAY=-1",
 		"spring.datasource.username=sa",
 		"spring.datasource.password=",
-		"spring.jpa.hibernate.ddl-auto=create-drop" })
+		"spring.jpa.hibernate.ddl-auto=create-drop",
+		// Lab 9: no default in prod either
+		"app.security.admin-password=test-admin-pass",
+		"app.security.user-password=test-user-pass",
+		"app.security.jwt-secret=prod-profile-test-secret-0123456789abcdef" })
 @ActiveProfiles("prod")
 class ProdProfileConfigTest {
 
