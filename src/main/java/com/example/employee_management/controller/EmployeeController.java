@@ -3,7 +3,6 @@ package com.example.employee_management.controller;
 import java.net.URI;
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.service.EmployeeService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -39,62 +40,36 @@ public class EmployeeController {
 		return ResponseEntity.ok(employeeService.searchEmployees(name, departmentId));
 	}
 
-	// GET /api/employees/1 -> 200 with the employee, or 404
+	// Errors (400 / 404 / 409 ...) are not handled here: the service throws an exception
+	// and GlobalExceptionHandler turns it into an ErrorResponse.
+
+	// GET /api/employees/1 -> 200; 404 no employee
 	@GetMapping("/{id}")
 	public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id) {
-		EmployeeResponse employee = employeeService.getEmployeeById(id);
-		if (employee == null) {
-			return ResponseEntity.notFound().build();
-		}
-		return ResponseEntity.ok(employee);
+		return ResponseEntity.ok(employeeService.getEmployeeById(id));
 	}
 
-	// POST /api/employees -> 201 + Location; 400 bad body or unknown department; 409 email already used
+	// POST /api/employees -> 201 + Location; 400 invalid body / unknown department; 409 email used
+	// @Valid checks the constraints in EmployeeRequest before the method runs
 	@PostMapping
-	public ResponseEntity<EmployeeResponse> createEmployee(@RequestBody EmployeeRequest request) {
-		if (!isValid(request) || !employeeService.departmentExists(request.getDepartmentId())) {
-			return ResponseEntity.badRequest().build(); // Lab 5 replaces these checks with @Valid
-		}
-		if (employeeService.emailExists(request.getEmail())) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).build();
-		}
+	public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody EmployeeRequest request) {
 		EmployeeResponse created = employeeService.addEmployee(request);
 		URI location = URI.create("/api/employees/" + created.getId());
 		return ResponseEntity.created(location).body(created);
 	}
 
-	// PUT /api/employees/1 -> 200; 400 bad body or unknown department; 404 no employee; 409 email used by another
+	// PUT /api/employees/1 -> 200; 400 invalid body / unknown department; 404 no employee; 409 email used by another
 	@PutMapping("/{id}")
 	public ResponseEntity<EmployeeResponse> updateEmployee(@PathVariable Long id,
-			@RequestBody EmployeeRequest request) {
-		if (!isValid(request) || !employeeService.departmentExists(request.getDepartmentId())) {
-			return ResponseEntity.badRequest().build();
-		}
-		if (!employeeService.employeeExists(id)) {
-			return ResponseEntity.notFound().build();
-		}
-		if (employeeService.emailUsedByOther(request.getEmail(), id)) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).build();
-		}
+			@Valid @RequestBody EmployeeRequest request) {
 		return ResponseEntity.ok(employeeService.updateEmployee(id, request));
 	}
 
-	// DELETE /api/employees/1 -> 204, or 404
+	// DELETE /api/employees/1 -> 204; 404 no employee
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
-		if (!employeeService.deleteEmployee(id)) {
-			return ResponseEntity.notFound().build();
-		}
+		employeeService.deleteEmployee(id);
 		return ResponseEntity.noContent().build();
-	}
-
-	// name and email not blank, departmentId given
-	private boolean isValid(EmployeeRequest request) {
-		return !isBlank(request.getName()) && !isBlank(request.getEmail()) && request.getDepartmentId() != null;
-	}
-
-	private boolean isBlank(String value) {
-		return value == null || value.trim().isEmpty();
 	}
 
 }

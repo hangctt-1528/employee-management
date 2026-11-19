@@ -47,10 +47,18 @@ Emails are stored in lower case, so `An@Example.com` and `an@example.com` count 
 | GET | `/api/departments` | List of departments (use their `id` as `departmentId`) |
 | GET | `/api/employees` | List of employees |
 | GET | `/api/employees?name=an&departmentId=1` | Search by name (contains, ignores case) and/or department; both given = AND |
-| GET | `/api/employees/{id}` | One employee, or `404` |
-| POST | `/api/employees` | Add: `201` + `Location`; `400` if name/email/departmentId is missing or the department doesn't exist; `409` if the email is already used |
+| GET | `/api/employees/{id}` | One employee; `404` if not found; `400` if `id` is not a number |
+| POST | `/api/employees` | Add: `201` + `Location`; `400` invalid data or unknown department; `409` email already used |
 | PUT | `/api/employees/{id}` | Update: `200`; `400` as above; `404` if no employee; `409` if another employee has the email |
 | DELETE | `/api/employees/{id}` | Delete: `204`, or `404` |
+
+Validation rules for the POST / PUT body:
+
+| Field | Rule |
+|---|---|
+| `name` | required, not blank, at most 100 characters |
+| `email` | required, a valid email address, at most 100 characters |
+| `departmentId` | required, a number, must be an existing department |
 
 ```bash
 curl -i http://localhost:8080/api/departments
@@ -73,6 +81,45 @@ On Windows PowerShell:
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/employees -ContentType 'application/json' -Body '{"name":"nguyen van an","email":"an@example.com","departmentId":1}'
+```
+
+## Errors
+
+Every error returns the same JSON shape:
+
+```json
+{
+  "timestamp": "2026-11-18T10:15:30.123",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Request data is not valid",
+  "path": "/api/employees",
+  "fieldErrors": {
+    "email": "Email is not valid",
+    "name": "Name must not be blank"
+  }
+}
+```
+
+`fieldErrors` is filled only for validation errors; otherwise it is `{}`.
+
+| Status | When |
+|---|---|
+| `400` | Validation failed (`fieldErrors`), unknown department, broken JSON, or a value of the wrong type (e.g. `/api/employees/abc`) |
+| `404` | Employee not found, or no endpoint at this URL |
+| `405` | HTTP method not supported for this URL |
+| `409` | Email already used by another employee |
+| `415` | `Content-Type` is not `application/json` |
+| `500` | Unexpected error (fixed message; details are only in the app log) |
+
+```bash
+curl -i -X POST http://localhost:8080/api/employees \
+  -H "Content-Type: application/json" \
+  -d '{"name":"","email":"not-an-email","departmentId":1}'
+# 400, fieldErrors: {"name":"Name must not be blank","email":"Email is not valid"}
+
+curl -i http://localhost:8080/api/employees/999
+# 404, "message":"Employee not found with id 999"
 ```
 
 ## Tests
