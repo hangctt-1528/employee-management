@@ -1,0 +1,22 @@
+# Test settings. Spring Boot reads src/main/resources/application.yml first, then this file
+# (classpath:config/ has priority), so only the differences are here.
+spring:
+  profiles:
+    # "test" has no application-test.yml: dev / prod are not loaded, so tests never use MySQL
+    active: test
+  datasource:
+    # In-memory H2; ${random.uuid} gives every test context its own database, so a context closed by
+    # @DirtiesContext (create-drop drops the tables) cannot break another cached context
+    url: "jdbc:h2:mem:employee_db_${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1"
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+app:
+  security:
+    # The security tests log in with these accounts
+    admin-password: admin123
+    user-password: user1234
+    jwt-secret: test-secret-for-the-jwt-tests-only-0123456789

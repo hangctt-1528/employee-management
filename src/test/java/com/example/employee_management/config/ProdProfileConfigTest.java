@@ -2,6 +2,7 @@ package com.example.employee_management.config;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +31,6 @@ class ProdProfileConfigTest {
 	@Value("${logging.level.com.example.employee_management}")
 	private String appLogLevel;
 
-	@Value("${spring.jpa.show-sql}")
-	private String showSql;
-
 	@Test
 	void prodProfileIsActive() {
 		String[] expected = { "prod" };
@@ -42,7 +40,13 @@ class ProdProfileConfigTest {
 	@Test
 	void prodProfileLogsInfoWithoutSql() {
 		assertEquals("INFO", appLogLevel);
-		assertEquals("false", showSql);
+		assertNull(environment.getProperty("logging.level.org.hibernate.SQL")); // SQL is not logged
+	}
+
+	// Secure cookie only when APP_COOKIE_SECURE=true (behind HTTPS); off by default so plain HTTP login works
+	@Test
+	void sessionCookieIsNotSecureByDefault() {
+		assertEquals("false", environment.getProperty("server.servlet.session.cookie.secure"));
 	}
 
 }

@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -63,8 +65,8 @@ public class SecurityConfig {
 	@Order(2)
 	public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/login", "/register", "/css/**", "/error", "/access-denied", "/hello", "/favicon.ico")
-						.permitAll()
+				.requestMatchers("/register", "/css/**", "/error", "/access-denied", "/hello", "/favicon.ico")
+						.permitAll() // /login is opened by formLogin().permitAll()
 				.requestMatchers("/employees/add").hasRole(AppUser.ADMIN)
 				.requestMatchers("/employees/**").hasAnyRole(AppUser.USER, AppUser.ADMIN)
 				.anyRequest().authenticated());
@@ -80,11 +82,17 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	// Token claim "roles": ["ADMIN"] -> ROLE_ADMIN, so hasRole(...) works
+	// Checks username/password (AppUserDetailsService + PasswordEncoder); used by AuthController.login
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+		return configuration.getAuthenticationManager();
+	}
+
+	// Token claim "roles": ["ROLE_ADMIN"] is read as is (no extra prefix), so hasRole(...) works
 	private JwtAuthenticationConverter jwtAuthenticationConverter() {
 		JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
 		authoritiesConverter.setAuthoritiesClaimName(JwtTokenService.ROLES_CLAIM);
-		authoritiesConverter.setAuthorityPrefix("ROLE_");
+		authoritiesConverter.setAuthorityPrefix("");
 		JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 		converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 		return converter;

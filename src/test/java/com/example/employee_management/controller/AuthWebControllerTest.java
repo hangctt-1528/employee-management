@@ -3,6 +3,7 @@ package com.example.employee_management.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,7 +27,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.employee_management.config.JwtConfig;
 import com.example.employee_management.config.SecurityConfig;
 import com.example.employee_management.dto.RegisterForm;
-import com.example.employee_management.dto.UserResponse;
 import com.example.employee_management.exception.DuplicateUsernameException;
 import com.example.employee_management.service.UserService;
 
@@ -76,7 +76,7 @@ class AuthWebControllerTest {
 
 	@Test
 	void validFormRegistersAndRedirectsToLogin() throws Exception {
-		when(userService.register(any(RegisterForm.class))).thenReturn(new UserResponse(3L, "binh", "USER"));
+
 
 		mockMvc.perform(post("/register").with(csrf())
 						.param("username", "binh")
@@ -109,13 +109,13 @@ class AuthWebControllerTest {
 				.andExpect(view().name("auth/register"))
 				.andExpect(model().attributeHasFieldErrorCode("registerForm", "username", "Pattern"))
 				.andExpect(model().attributeHasFieldErrorCode("registerForm", "password", "Size"))
-				.andExpect(content().string(containsString("Password must be 8 to 72 characters")));
+				.andExpect(content().string(containsString("Password must have at least 8 characters")));
 		verify(userService, never()).register(any(RegisterForm.class));
 	}
 
 	@Test
 	void usernameOf3CharactersIsAccepted() throws Exception {
-		when(userService.register(any(RegisterForm.class))).thenReturn(new UserResponse(3L, "abc", "USER"));
+
 
 		mockMvc.perform(post("/register").with(csrf())
 						.param("username", "abc")
@@ -141,7 +141,7 @@ class AuthWebControllerTest {
 
 	@Test
 	void passwordOf72BytesIsAccepted() throws Exception {
-		when(userService.register(any(RegisterForm.class))).thenReturn(new UserResponse(3L, "binh", "USER"));
+
 		String password = "ệ".repeat(24); // 72 bytes
 
 		mockMvc.perform(post("/register").with(csrf())
@@ -162,7 +162,7 @@ class AuthWebControllerTest {
 
 	@Test
 	void takenUsernameIsShownOnTheUsernameField() throws Exception {
-		when(userService.register(any(RegisterForm.class))).thenThrow(new DuplicateUsernameException("admin"));
+		doThrow(new DuplicateUsernameException("admin")).when(userService).register(any(RegisterForm.class));
 
 		mockMvc.perform(post("/register").with(csrf())
 						.param("username", "admin")

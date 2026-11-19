@@ -7,6 +7,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.example.employee_management.dto.RegisterForm;
 import com.example.employee_management.entity.AppUser;
 import com.example.employee_management.repository.AppUserRepository;
 
@@ -17,7 +18,6 @@ public class UserSeeder implements CommandLineRunner {
 
 	public static final String ADMIN_USERNAME = "admin";
 	public static final String USER_USERNAME = "user";
-	public static final int MIN_PASSWORD_LENGTH = 8;
 
 	private static final Logger logger = LoggerFactory.getLogger(UserSeeder.class);
 
@@ -47,9 +47,9 @@ public class UserSeeder implements CommandLineRunner {
 		if (appUserRepository.existsByUsername(username)) {
 			return;
 		}
-		if (rawPassword == null || rawPassword.length() < MIN_PASSWORD_LENGTH) {
+		if (rawPassword == null || rawPassword.length() < RegisterForm.MIN_PASSWORD_LENGTH) {
 			throw new IllegalStateException("The password of the default " + role + " account must have at least "
-					+ MIN_PASSWORD_LENGTH + " characters (APP_ADMIN_PASSWORD / APP_USER_PASSWORD)");
+					+ RegisterForm.MIN_PASSWORD_LENGTH + " characters (APP_ADMIN_PASSWORD / APP_USER_PASSWORD)");
 		}
 		AppUser saved = appUserRepository.save(new AppUser(username, passwordEncoder.encode(rawPassword), role));
 		logger.info("Default account created: id={}, role={}", saved.getId(), role);

@@ -13,6 +13,8 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.example.employee_management.dto.RegisterForm;
 import com.example.employee_management.exception.DuplicateUsernameException;
+import com.example.employee_management.exception.GlobalExceptionHandler;
+import com.example.employee_management.exception.WebExceptionHandler;
 import com.example.employee_management.service.UserService;
 
 import jakarta.servlet.RequestDispatcher;
@@ -22,9 +24,6 @@ import jakarta.validation.Valid;
 // Login, register and access-denied pages.
 @Controller
 public class AuthWebController {
-
-	public static final String ACCESS_DENIED_MESSAGE = "You do not have permission to do this";
-	public static final int MAX_PASSWORD_BYTES = 72; // limit of BCrypt
 
 	private final UserService userService;
 
@@ -49,9 +48,9 @@ public class AuthWebController {
 		if (form.getPassword() != null && !form.getPassword().equals(form.getConfirmPassword())) {
 			bindingResult.rejectValue("confirmPassword", "mismatch", "Passwords do not match");
 		}
-		// @Size counts characters, BCrypt allows 72 bytes ("ệ" = 3 bytes)
+		// BCrypt allows at most 72 bytes ("ệ" = 3 bytes), so the limit is checked in bytes, not characters
 		if (form.getPassword() != null
-				&& form.getPassword().getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+				&& form.getPassword().getBytes(StandardCharsets.UTF_8).length > RegisterForm.MAX_PASSWORD_BYTES) {
 			bindingResult.rejectValue("password", "tooLong",
 					"Password is too long (at most 72 bytes; letters with accents count as 2 or 3)");
 		}
@@ -74,13 +73,7 @@ public class AuthWebController {
 		if (path == null) {
 			path = request.getRequestURI(); // opened directly
 		}
-		ModelAndView modelAndView = new ModelAndView("error");
-		modelAndView.setStatus(HttpStatus.FORBIDDEN);
-		modelAndView.addObject("status", HttpStatus.FORBIDDEN.value());
-		modelAndView.addObject("error", HttpStatus.FORBIDDEN.getReasonPhrase());
-		modelAndView.addObject("message", ACCESS_DENIED_MESSAGE);
-		modelAndView.addObject("path", path);
-		return modelAndView;
+		return WebExceptionHandler.errorPage(HttpStatus.FORBIDDEN, GlobalExceptionHandler.ACCESS_DENIED_MESSAGE, path);
 	}
 
 }

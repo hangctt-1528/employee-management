@@ -31,7 +31,7 @@
         <span class="error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}">Confirm error</span>
     </div>
 
-    <p class="hint">Username: 3 to 50 letters, digits, '.', '_' or '-'. Password: 8 to 72 characters (at most 72 bytes).</p>
+    <p class="hint">Username: 3 to 50 letters, digits, '.', '_' or '-'. Password: at least 8 characters (at most 72 bytes).</p>
 
     <button type="submit">Create account</button>
 </form>

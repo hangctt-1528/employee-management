@@ -1,55 +1,258 @@
+/* Plain CSS (no framework). Colors are kept in variables so they are easy to change. */
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --background: #f3f4f6;
+    --card: #ffffff;
+    --error: #b91c1c;
+    --error-bg: #fef2f2;
+    --success: #15803d;
+    --success-bg: #f0fdf4;
+}
+
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    margin: 24px;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--background);
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 16px 40px;
+}
+
+h1 {
+    font-size: 1.6em;
+    margin: 24px 0 16px;
+}
+
+h2 {
+    font-size: 1.2em;
+    margin: 24px 0 8px;
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ---- Header menu ---- */
+
+.menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    background: var(--card);
+    border-bottom: 3px solid var(--primary);
+    border-radius: 0 0 8px 8px;
+    padding: 10px 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .menu a {
-    margin-right: 16px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.menu a:hover {
+    background: #eff6ff;
+    text-decoration: none;
 }
 
 .menu .user {
-    margin-left: 16px;
+    margin-left: auto; /* push the user name and Log out to the right */
+    color: var(--muted);
 }
 
 .inline-form {
     display: inline;
-    margin-left: 8px;
+    margin: 0 0 0 8px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
-.field label {
-    display: inline-block;
-    width: 140px;
+.inline-form button {
+    background: none;
+    color: var(--error);
+    border: 1px solid var(--error);
+    padding: 4px 12px;
 }
 
-.hint {
-    color: #555;
-    font-size: 0.9em;
+.inline-form button:hover {
+    background: var(--error-bg);
 }
+
+/* ---- Tables ---- */
 
 table {
+    width: 100%;
     border-collapse: collapse;
+    background: var(--card);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     margin-top: 12px;
 }
 
 th, td {
-    border: 1px solid #999;
-    padding: 6px 12px;
+    padding: 10px 14px;
     text-align: left;
+    border-bottom: 1px solid var(--border);
 }
 
-th {
-    background: #eee;
+thead th {
+    background: var(--primary);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+tbody tr:hover {
+    background: #eff6ff;
+}
+
+tfoot th {
+    background: #f3f4f6;
+}
+
+td.number, th.number {
+    text-align: right;
+}
+
+/* ---- Forms ---- */
+
+form {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    max-width: 560px;
 }
 
 .field {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
-.error {
-    color: #c00;
-    margin-left: 8px;
+label {
+    display: inline-block;
+    width: 140px;
+    font-weight: 600;
 }
 
-.success {
-    color: #070;
+input[type="text"], input[type="password"], select {
+    width: 260px;
+    padding: 7px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+button {
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--primary-dark);
+}
+
+form a {
+    margin-left: 12px;
+}
+
+/* The search form puts label, input and button on one line */
+form[method="get"] {
+    max-width: none;
+}
+
+form[method="get"] label {
+    width: auto;
+    margin-right: 6px;
+}
+
+form[method="get"] input, form[method="get"] select {
+    width: 200px;
+    margin-right: 16px;
+}
+
+/* ---- Messages ---- */
+
+/* Error under a form field */
+span.error {
+    display: block;
+    color: var(--error);
+    font-size: 0.9em;
+    margin: 4px 0 0 140px;
+}
+
+/* Error / success message boxes */
+p.error, p.success {
+    padding: 10px 14px;
+    border-radius: 6px;
+    max-width: 560px;
+}
+
+p.error {
+    color: var(--error);
+    background: var(--error-bg);
+    border-left: 4px solid var(--error);
+}
+
+p.success {
+    color: var(--success);
+    background: var(--success-bg);
+    border-left: 4px solid var(--success);
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+/* ---- Statistics ---- */
+
+.total {
+    display: inline-block;
+    background: var(--card);
+    padding: 14px 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    font-size: 1.1em;
+}
+
+.total b {
+    font-size: 1.6em;
+    color: var(--primary);
+    margin-left: 6px;
 }

@@ -8,14 +8,13 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
+import com.example.employee_management.security.JwtTokenService;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 // JWT beans: one secret key signs (JwtEncoder) and checks (JwtDecoder) the tokens, HS256.
@@ -40,15 +39,12 @@ public class JwtConfig {
 		return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey()));
 	}
 
+	// HS256 by default. Checks the signature, the expiry and that "iss" is this app
 	@Bean
 	public JwtDecoder jwtDecoder() {
-		return NimbusJwtDecoder.withSecretKey(secretKey()).macAlgorithm(MacAlgorithm.HS256).build();
-	}
-
-	// Checks username/password (AppUserDetailsService + PasswordEncoder); used by AuthController.login
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-		return configuration.getAuthenticationManager();
+		NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey()).build();
+		decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(JwtTokenService.ISSUER));
+		return decoder;
 	}
 
 	private SecretKey secretKey() {

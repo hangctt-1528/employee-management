@@ -9,6 +9,7 @@
         <a th:href="@{/employees/list}">Employee list</a>
         <a th:if="${admin}" th:href="@{/employees/add}">Add employee</a>
         <a th:href="@{/employees/search}">Search</a>
+        <a th:href="@{/employees/statistics}">Statistics</a>
         <span class="user">Logged in as <b th:text="${currentUsername}">user</b>
             (<span th:if="${admin}">ADMIN</span><span th:unless="${admin}">USER</span>)</span>
         <form class="inline-form" th:action="@{/logout}" method="post">

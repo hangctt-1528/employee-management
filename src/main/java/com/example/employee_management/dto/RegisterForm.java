@@ -7,15 +7,17 @@ import jakarta.validation.constraints.Size;
 // Form of /register. No role field: new accounts are always USER.
 public class RegisterForm {
 
+	public static final int MIN_PASSWORD_LENGTH = 8; // also used by UserSeeder
+	public static final int MAX_PASSWORD_BYTES = 72; // limit of BCrypt, checked in AuthWebController
+
 	// No ':' (it would break HTTP Basic "username:password")
 	@NotBlank(message = "Username must not be blank")
 	@Size(min = 3, max = 50, message = "Username must be 3 to 50 characters")
 	@Pattern(regexp = "[A-Za-z0-9._-]*", message = "Username may contain only letters, digits, '.', '_' and '-'")
 	private String username;
 
-	// The 72-byte BCrypt limit is checked in AuthWebController
 	@NotBlank(message = "Password must not be blank")
-	@Size(min = 8, max = 72, message = "Password must be 8 to 72 characters")
+	@Size(min = MIN_PASSWORD_LENGTH, message = "Password must have at least 8 characters")
 	private String password;
 
 	private String confirmPassword;

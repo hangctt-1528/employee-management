@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,13 +38,16 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.employee_management.config.JwtConfig;
 import com.example.employee_management.config.SecurityConfig;
+import com.example.employee_management.dto.DepartmentEmployeeCount;
 import com.example.employee_management.dto.DepartmentResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
+import com.example.employee_management.dto.EmployeeStatisticsResponse;
 import com.example.employee_management.exception.DepartmentNotFoundException;
 import com.example.employee_management.exception.DuplicateEmailException;
 import com.example.employee_management.service.DepartmentService;
 import com.example.employee_management.service.EmployeeService;
+import com.example.employee_management.service.ReportService;
 
 // @WebMvcTest also starts Thymeleaf, so the tests check the view name, the model and the rendered HTML.
 @WebMvcTest(EmployeeWebController.class)
@@ -60,6 +64,9 @@ class EmployeeWebControllerTest {
 
 	@MockitoBean
 	private DepartmentService departmentService;
+
+	@MockitoBean
+	private ReportService reportService; // Lab 10: /employees/statistics
 
 	@BeforeEach
 	void setUp() {
@@ -358,6 +365,59 @@ class EmployeeWebControllerTest {
 				.andExpect(status().isForbidden())
 				.andExpect(view().name("error"))
 				.andExpect(content().string(containsString("You do not have permission to do this")));
+	}
+
+	// ---- Lab 10: /employees/statistics ----
+
+	private EmployeeStatisticsResponse statistics() {
+		List<DepartmentEmployeeCount> rows = new ArrayList<>();
+		rows.add(new DepartmentEmployeeCount(1L, "IT", 2L));
+		rows.add(new DepartmentEmployeeCount(2L, "HR", 0L));
+		return new EmployeeStatisticsResponse(2, rows, LocalDateTime.of(2026, 11, 19, 10, 15, 30));
+	}
+
+	@Test
+	@WithMockUser(roles = "USER")
+	void statisticsPageShowsTotalAndDepartments() throws Exception {
+		when(reportService.getStatistics()).thenReturn(statistics());
+
+		mockMvc.perform(get("/employees/statistics"))
+				.andExpect(status().isOk())
+				.andExpect(view().name("employees/statistics"))
+				.andExpect(model().attributeExists("statistics"))
+				.andExpect(content().string(containsString("Total employees: <b>2</b>")))
+				.andExpect(content().string(containsString("<td>IT</td>")))
+				.andExpect(content().string(containsString("<td>HR</td>")))
+				.andExpect(content().string(containsString("2026-11-19 10:15:30")))
+				.andExpect(content().string(containsString("href=\"/employees/statistics\""))); // header link
+	}
+
+	@Test
+	void statisticsPageWithoutDepartmentsShowsMessage() throws Exception {
+		when(reportService.getStatistics())
+				.thenReturn(new EmployeeStatisticsResponse(0, new ArrayList<>(), LocalDateTime.now()));
+
+		mockMvc.perform(get("/employees/statistics"))
+				.andExpect(content().string(containsString("No departments yet.")));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void statisticsPageNeedsALogin() throws Exception {
+		mockMvc.perform(get("/employees/statistics"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/login"));
+	}
+
+	@Test
+	void statisticsErrorShowsErrorPage() throws Exception {
+		when(reportService.getStatistics()).thenThrow(new RuntimeException("secret database detail"));
+
+		mockMvc.perform(get("/employees/statistics"))
+				.andExpect(status().isInternalServerError())
+				.andExpect(view().name("error"))
+				.andExpect(content().string(containsString("Unexpected error, please try again later")))
+				.andExpect(content().string(not(containsString("secret database detail"))));
 	}
 
 }

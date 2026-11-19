@@ -35,11 +35,11 @@ public class JwtTokenService {
 	}
 
 	public String createToken(Authentication authentication) {
+		// Only roles (e.g. "ROLE_ADMIN"); Spring Security 7 also adds FACTOR_* authorities
 		List<String> roles = new ArrayList<>();
 		for (GrantedAuthority authority : authentication.getAuthorities()) {
-			String name = authority.getAuthority();
-			if (name.startsWith("ROLE_")) {
-				roles.add(name.substring("ROLE_".length())); // "ROLE_ADMIN" -> "ADMIN"
+			if (authority.getAuthority().startsWith("ROLE_")) {
+				roles.add(authority.getAuthority());
 			}
 		}
 
