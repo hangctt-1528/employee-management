@@ -1,13 +1,15 @@
+# syntax=docker/dockerfile:1
+
 # ---- Stage 1: build the jar with Maven + JDK 25 ----
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 
-# Download dependencies first so this layer is cached between builds
 COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
-
 COPY src ./src
-RUN mvn -B -q package -DskipTests
+
+# The cache mount keeps ~/.m2 between builds, so dependencies are downloaded only once.
+# No -q flag: Maven prints each download, so you can see the build is progressing.
+RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
 
 # ---- Stage 2: run on a Java 25 JRE ----
 FROM eclipse-temurin:25-jre

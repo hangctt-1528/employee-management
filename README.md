@@ -17,10 +17,8 @@ The first build downloads Maven dependencies, so it takes a few minutes.
 ## URL and port
 
 - App: http://localhost:8080
+- Hello API: http://localhost:8080/hello returns `Hello, Employee Management!`
 - Default accounts: none yet.
-
-> The project currently has only `spring-boot-starter` (no web server), so the app starts and exits.
-> Port 8080 becomes active after a web starter is added.
 
 ## Stop
 
