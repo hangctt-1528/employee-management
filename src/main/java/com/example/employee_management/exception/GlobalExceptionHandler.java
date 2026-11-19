@@ -1,5 +1,7 @@
 package com.example.employee_management.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,6 +23,8 @@ import jakarta.servlet.http.HttpServletRequest;
 // Spring picks the handler whose exception type is the closest match, so Exception.class is only the fallback.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	// ---- Our own exceptions (thrown by EmployeeService) ----
 
@@ -96,7 +100,8 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
-		ex.printStackTrace(); // the developer sees the cause in the console / docker compose logs
+		// the exception is the last argument, so the log also has the stack trace (docker compose logs app)
+		logger.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);
 		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error, please try again later", request);
 	}
 

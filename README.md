@@ -1,6 +1,6 @@
 # Employee Management
 
-Spring Boot 4 practice project (Java 25): web pages (Thymeleaf) and a REST API for employees and departments, stored in MySQL with Spring Data JPA.
+Spring Boot 4 practice project (Java 25): web pages (Thymeleaf) and a REST API for employees and departments, stored in MySQL with Spring Data JPA. Logging with SLF4J + Logback, profiles `dev` / `prod`.
 
 ## Prerequisite
 
@@ -14,6 +14,7 @@ docker compose up --build
 
 This starts two containers: `db` (MySQL 8.4) and `app`. The app waits until MySQL is healthy.
 The first build downloads Maven dependencies and the MySQL image, so it takes a few minutes.
+Docker Compose runs the app with the `prod` profile (see [Profiles](#profiles)).
 
 ## URL and port
 
@@ -29,17 +30,49 @@ Sample departments `IT`, `HR`, `Sales` are created at the first start.
 
 | Variable | Value in docker-compose.yml | Default when not set |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:mysql://db:3306/employee_db?...` | `jdbc:mysql://localhost:3306/employee_db` |
-| `SPRING_DATASOURCE_USERNAME` | `employee` | `employee` |
-| `SPRING_DATASOURCE_PASSWORD` | `employee` | `employee` |
+| `SPRING_PROFILES_ACTIVE` | `prod` | `dev` |
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://db:3306/employee_db?...` | dev: `jdbc:mysql://localhost:3307/employee_db?...`; prod: required |
+| `SPRING_DATASOURCE_USERNAME` | `employee` | dev: `employee`; prod: required |
+| `SPRING_DATASOURCE_PASSWORD` | `employee` | dev: `employee`; prod: required |
 
-To run the app on your machine (`./mvnw spring-boot:run`) against the MySQL started by compose (`docker compose up -d db`), point it to port 3307:
+To run the app on your machine with the `dev` profile, start only MySQL with compose; `dev` already points to port 3307:
 
 ```bash
-SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3307/employee_db?allowPublicKeyRetrieval=true&useSSL=false" ./mvnw spring-boot:run
+docker compose up -d db
+./mvnw spring-boot:run        # PowerShell: .\mvnw spring-boot:run
 ```
 
+If you use a MySQL installed on your machine (port 3306) instead, set `SPRING_DATASOURCE_URL`.
+
 Emails are stored in lower case, so `An@Example.com` and `an@example.com` count as the same email.
+
+## Profiles
+
+Config files in `src/main/resources`: `application.yml` (shared, default profile `dev`), `application-dev.yml`, `application-prod.yml`.
+
+| Profile | Used by | Database | Logs |
+|---|---|---|---|
+| `dev` (default) | `./mvnw spring-boot:run` | Environment variables, with defaults for `localhost:3307` | `DEBUG` for the app, plus every SQL statement (`org.hibernate.SQL`) |
+| `prod` | `docker compose up` (`SPRING_PROFILES_ACTIVE: prod`) | Only from the 3 `SPRING_DATASOURCE_*` variables; if one is missing the app stops at startup | `INFO` |
+
+To change the profile, set `SPRING_PROFILES_ACTIVE=prod`, or run `./mvnw spring-boot:run -Dspring-boot.run.profiles=prod` (with the 3 `SPRING_DATASOURCE_*` variables set).
+
+## Logs
+
+The app logs to the console (Spring Boot's default Logback setup). With Docker:
+
+```bash
+docker compose logs -f app
+```
+
+| Event | Level | Example |
+|---|---|---|
+| Employee added / updated / deleted | `INFO` | `c.e.e.service.EmployeeService : Employee added: id=1, departmentId=1` |
+| Refused: email already used, employee or department not found | `WARN` | `Cannot add employee: email is already used`, `Employee not found: id=999` |
+| Start of each add / update / delete (`dev` only) | `DEBUG` | `Adding employee: departmentId=1` |
+| Unexpected error (500) | `ERROR` + stack trace | `Unexpected error on GET /api/employees/1` |
+
+Logs contain only ids, never names or emails.
 
 ## Web pages
 
@@ -123,7 +156,7 @@ Every error of the REST API (`/api/...`, and unknown URLs) returns the same JSON
 | `405` | HTTP method not supported for this URL |
 | `409` | Email already used by another employee |
 | `415` | `Content-Type` is not `application/json` |
-| `500` | Unexpected error (fixed message; details are only in the app log) |
+| `500` | Unexpected error (fixed message; details are only in the app log as `ERROR`, see [Logs](#logs)) |
 
 ```bash
 curl -i -X POST http://localhost:8080/api/employees \
@@ -137,7 +170,7 @@ curl -i http://localhost:8080/api/employees/999
 
 ## Tests
 
-`./mvnw test` uses an in-memory H2 database, so it doesn't need MySQL.
+`./mvnw test` uses an in-memory H2 database (`src/test/resources/application.yml`, which replaces the main `application.yml`), so no profile is active and it doesn't need MySQL.
 
 ## Stop
 

@@ -1,5 +1,7 @@
 package com.example.employee_management.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,11 +26,11 @@ import com.example.employee_management.service.EmployeeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
-// @Controller (not @RestController): each method puts data into the Model and returns a view name.
-// Thymeleaf renders src/main/resources/templates/<view name>.html into HTML.
 @Controller
 @RequestMapping("/employees")
 public class EmployeeWebController {
+
+	private static final Logger logger = LoggerFactory.getLogger(EmployeeWebController.class);
 
 	private final EmployeeService employeeService;
 	private final DepartmentService departmentService;
@@ -53,8 +55,6 @@ public class EmployeeWebController {
 		return "employees/add";
 	}
 
-	// POST /employees/add -> data binding fills EmployeeRequest from the form fields,
-	// @Valid checks it, and BindingResult holds the errors (it must come right after the checked object).
 	@PostMapping("/add")
 	public String addEmployee(@Valid @ModelAttribute("employee") EmployeeRequest employee,
 			BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes) {
@@ -92,9 +92,6 @@ public class EmployeeWebController {
 		return "employees/search";
 	}
 
-	// Errors of this controller are shown as an HTML page (templates/error.html), not as JSON.
-	// Spring checks @ExceptionHandler methods in the controller before GlobalExceptionHandler.
-
 	// e.g. /employees/search?departmentId=abc
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
 	public ModelAndView handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
@@ -104,7 +101,7 @@ public class EmployeeWebController {
 
 	@ExceptionHandler(Exception.class)
 	public ModelAndView handleUnexpected(Exception ex, HttpServletRequest request) {
-		ex.printStackTrace();
+		logger.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);
 		return showError(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error, please try again later", request);
 	}
 

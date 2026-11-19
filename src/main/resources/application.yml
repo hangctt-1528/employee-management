@@ -1,0 +1,12 @@
+# Settings shared by every profile.
+# The database and the log levels are in application-dev.yml and application-prod.yml.
+spring:
+  application:
+    name: employee-management
+  profiles:
+    # Default profile for local runs (./mvnw spring-boot:run).
+    # docker-compose.yml sets SPRING_PROFILES_ACTIVE=prod, which wins over this value.
+    active: dev
+  jpa:
+    # Close the database session when the service returns, not at the end of the HTTP request
+    open-in-view: false
