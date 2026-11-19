@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.employee_management.dto.RegisterForm;
 import com.example.employee_management.dto.UserResponse;
@@ -13,6 +14,7 @@ import com.example.employee_management.exception.DuplicateUsernameException;
 import com.example.employee_management.repository.AppUserRepository;
 
 @Service
+@Transactional(readOnly = true)
 public class UserService {
 
 	// Logs only id and role
@@ -35,7 +37,8 @@ public class UserService {
 	}
 
 	// Always role USER; DuplicateUsernameException if taken
-	public UserResponse register(RegisterForm form) {
+	@Transactional
+	public void register(RegisterForm form) {
 		String username = normalizeUsername(form.getUsername());
 		if (appUserRepository.existsByUsername(username)) {
 			logger.warn("Cannot register user: username is already used");
@@ -44,7 +47,6 @@ public class UserService {
 		String hash = passwordEncoder.encode(form.getPassword()); // BCrypt
 		AppUser saved = appUserRepository.save(new AppUser(username, hash, AppUser.USER));
 		logger.info("User registered: id={}, role={}", saved.getId(), saved.getRole());
-		return toResponse(saved);
 	}
 
 	// UsernameNotFoundException (-> 401) if the account was removed

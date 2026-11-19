@@ -108,7 +108,7 @@ class EmployeeServiceLoggingTest {
 		assertThrows(EmployeeNotFoundException.class, () -> employeeService.deleteEmployee(999L));
 
 		String log = output.getOut();
-		assertTrue(log.contains("Cannot delete employee id=999: not found"));
+		assertTrue(log.contains("Employee not found: id=999"));
 		assertFalse(log.contains("Employee deleted"));
 	}
 

@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
@@ -20,7 +21,9 @@ import com.example.employee_management.repository.DepartmentRepository;
 import com.example.employee_management.repository.EmployeeRepository;
 
 // @PreAuthorize: second check after the URL rules, only ADMIN can change employees.
+// @Transactional: reads are read-only; each write runs its checks and its change in one transaction.
 @Service
+@Transactional(readOnly = true)
 public class EmployeeService {
 
 	// SLF4J API; Spring Boot uses Logback behind it. The level per profile is set in application-dev.yml / -prod.yml.
@@ -68,6 +71,7 @@ public class EmployeeService {
 
 	// Throws DepartmentNotFoundException (-> 400) or DuplicateEmailException (-> 409)
 	@PreAuthorize("hasRole('ADMIN')")
+	@Transactional
 	public EmployeeResponse addEmployee(EmployeeRequest request) {
 		logger.debug("Adding employee: departmentId={}", request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
@@ -86,6 +90,7 @@ public class EmployeeService {
 	// Throws DepartmentNotFoundException (-> 400), EmployeeNotFoundException (-> 404)
 	// or DuplicateEmailException (-> 409), checked in that order
 	@PreAuthorize("hasRole('ADMIN')")
+	@Transactional
 	public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
 		logger.debug("Updating employee: id={}, departmentId={}", id, request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
@@ -98,20 +103,17 @@ public class EmployeeService {
 		employee.setName(utilityService.formatName(request.getName()));
 		employee.setEmail(email);
 		employee.setDepartment(department);
-		Employee saved = employeeRepository.save(employee);
-		logger.info("Employee updated: id={}, departmentId={}", saved.getId(), department.getId());
-		return toResponse(saved);
+		// No save(): the entity is managed, Hibernate writes the UPDATE when the transaction commits
+		logger.info("Employee updated: id={}, departmentId={}", id, department.getId());
+		return toResponse(employee);
 	}
 
 	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
 	@PreAuthorize("hasRole('ADMIN')")
+	@Transactional
 	public void deleteEmployee(Long id) {
 		logger.debug("Deleting employee: id={}", id);
-		if (!employeeRepository.existsById(id)) {
-			logger.warn("Cannot delete employee id={}: not found", id);
-			throw new EmployeeNotFoundException(id);
-		}
-		employeeRepository.deleteById(id);
+		employeeRepository.delete(findEmployee(id));
 		logger.info("Employee deleted: id={}", id);
 	}
 
@@ -133,10 +135,9 @@ public class EmployeeService {
 		return found.get();
 	}
 
-	// Emails are stored in lower case, so "An@Example.com" and "an@example.com" are the same
-	// on both MySQL (case-insensitive) and H2 (case-sensitive)
+	// Lower case, so "An@Example.com" = "an@example.com" on MySQL and H2 (EmployeeRequest already trims)
 	private String normalizeEmail(String email) {
-		return email.trim().toLowerCase();
+		return email.toLowerCase();
 	}
 
 	private List<EmployeeResponse> toResponseList(List<Employee> employees) {

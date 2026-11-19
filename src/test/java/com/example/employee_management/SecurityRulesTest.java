@@ -1,7 +1,9 @@
 package com.example.employee_management;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -16,8 +18,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -28,6 +33,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.employee_management.security.JwtTokenService;
 import com.jayway.jsonpath.JsonPath;
 
 // The whole app with the real accounts created by UserSeeder (admin/admin123, user/user1234),
@@ -35,6 +41,7 @@ import com.jayway.jsonpath.JsonPath;
 // an unknown id, so they pass security and stop in the controller (400 / 404), which proves access was granted.
 @SpringBootTest
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 class SecurityRulesTest {
 
 	private static final String EMPLOYEE_BODY = "{\"name\":\"an\",\"email\":\"an@example.com\",\"departmentId\":1}";
@@ -75,6 +82,10 @@ class SecurityRulesTest {
 		mockMvc.perform(get("/api/employees").with(httpBasic("admin", "admin123"))).andExpect(status().isOk());
 		mockMvc.perform(get("/api/departments").with(httpBasic("user", "user1234"))).andExpect(status().isOk());
 		mockMvc.perform(get("/api/reports/employee-count").with(httpBasic("user", "user1234")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/statistics").with(httpBasic("user", "user1234")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/employees-by-department").with(httpBasic("user", "user1234")))
 				.andExpect(status().isOk());
 	}
 
@@ -146,6 +157,19 @@ class SecurityRulesTest {
 				.andExpect(status().isNotFound()); // ADMIN role read from the token
 	}
 
+	// Lab 10: statistics with a USER token, and without login
+	@Test
+	void statisticsWorkWithAUserTokenAndNeedALogin() throws Exception {
+		String token = login("user", "user1234");
+
+		mockMvc.perform(get("/api/reports/employees-by-department").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/statistics").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/statistics"))
+				.andExpect(status().isUnauthorized());
+	}
+
 	@Test
 	void userTokenCannotDelete() throws Exception {
 		String token = login("user", "user1234");
@@ -183,20 +207,43 @@ class SecurityRulesTest {
 
 	@Test
 	void expiredTokenIsRejected() throws Exception {
-		List<String> roles = new ArrayList<>();
-		roles.add("ADMIN");
 		Instant twoHoursAgo = Instant.now().minusSeconds(7200);
-		JwtClaimsSet claims = JwtClaimsSet.builder()
-				.subject("admin")
-				.issuedAt(twoHoursAgo)
-				.expiresAt(twoHoursAgo.plusSeconds(3600)) // expired one hour ago
-				.claim("roles", roles)
-				.build();
-		String token = jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
-				.getTokenValue();
+		String token = adminToken(JwtTokenService.ISSUER, twoHoursAgo, twoHoursAgo.plusSeconds(3600)); // expired 1 h ago
 
 		mockMvc.perform(get("/api/employees").header(HttpHeaders.AUTHORIZATION, bearer(token)))
 				.andExpect(status().isUnauthorized());
+	}
+
+	// Signed with the right key but made by another app ("iss" is checked)
+	@Test
+	void tokenFromAnotherIssuerIsRejected() throws Exception {
+		String token = adminToken("another-app", Instant.now(), Instant.now().plusSeconds(3600));
+
+		mockMvc.perform(get("/api/employees").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+				.andExpect(status().isUnauthorized());
+	}
+
+	// Control for the two tests above: the same kind of token with the right issuer and time works
+	@Test
+	void handMadeTokenWithTheRightIssuerWorks() throws Exception {
+		String token = adminToken(JwtTokenService.ISSUER, Instant.now(), Instant.now().plusSeconds(3600));
+
+		mockMvc.perform(get("/api/employees").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+				.andExpect(status().isOk());
+	}
+
+	private String adminToken(String issuer, Instant issuedAt, Instant expiresAt) {
+		List<String> roles = new ArrayList<>();
+		roles.add("ROLE_ADMIN");
+		JwtClaimsSet claims = JwtClaimsSet.builder()
+				.issuer(issuer)
+				.subject("admin")
+				.issuedAt(issuedAt)
+				.expiresAt(expiresAt)
+				.claim(JwtTokenService.ROLES_CLAIM, roles)
+				.build();
+		return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+				.getTokenValue();
 	}
 
 	// ---- Web pages (login form + session) ----
@@ -218,6 +265,18 @@ class SecurityRulesTest {
 	@Test
 	void helloIsOpenToEveryone() throws Exception {
 		mockMvc.perform(get("/hello")).andExpect(status().isOk());
+	}
+
+	// Unknown URL: JSON 404 for an API client, plain 404 (Boot's HTML error page) for a browser
+	@Test
+	void unknownUrlIsJsonForApiAndHtmlForBrowser(CapturedOutput output) throws Exception {
+		mockMvc.perform(get("/api/employees/x/y").with(httpBasic("admin", "admin123")))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.message").value("No endpoint at this URL"));
+
+		mockMvc.perform(get("/employees/nope").with(user("user").roles("USER")).accept(MediaType.TEXT_HTML))
+				.andExpect(status().isNotFound());
+		assertFalse(output.getOut().contains("Failure in @ExceptionHandler"));
 	}
 
 }

@@ -28,6 +28,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -311,6 +312,17 @@ class EmployeeControllerTest {
 		assertTrue(log.contains("ERROR"));
 		assertTrue(log.contains("Unexpected error on GET /api/employees/1"));
 		assertTrue(log.contains("secret database detail"));
+	}
+
+	// Two requests with the same email at the same time: the UNIQUE column stops the second one -> 409, not 500
+	@Test
+	void uniqueConstraintViolationReturns409() throws Exception {
+		when(employeeService.addEmployee(any(EmployeeRequest.class)))
+				.thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+		mockMvc.perform(post("/api/employees").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.status").value(409));
 	}
 
 }

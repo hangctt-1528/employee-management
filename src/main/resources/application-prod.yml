@@ -6,11 +6,15 @@ spring:
     url: "${SPRING_DATASOURCE_URL}"
     username: "${SPRING_DATASOURCE_USERNAME}"
     password: "${SPRING_DATASOURCE_PASSWORD}"
-  jpa:
-    hibernate:
-      # "validate" would fail on the first start with an empty database (no migration tool in this project)
-      ddl-auto: update
-    show-sql: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        # Secure: the browser sends the session cookie only over HTTPS. Set APP_COOKIE_SECURE=true
+        # when the app runs behind HTTPS; with plain HTTP (docker compose) it must stay false or login breaks.
+        # HttpOnly (JavaScript cannot read the cookie) is already Spring Boot's default.
+        secure: "${APP_COOKIE_SECURE:false}"
 
 app:
   security:
