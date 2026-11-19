@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- Reusable pieces, included with th:replace="~{fragments :: name}" -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Menu shown at the top of every page -->
+<nav th:fragment="header" class="menu">
+    <a th:href="@{/employees/list}">Employee list</a>
+    <a th:href="@{/employees/add}">Add employee</a>
+    <a th:href="@{/employees/search}">Search</a>
+</nav>
+
+<!-- Employee table, used by the list page and the search page -->
+<table th:fragment="employeeTable(employees)">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Department</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="employee : ${employees}">
+        <td th:text="${employee.id}">1</td>
+        <td th:text="${employee.name}">Nguyen Van An</td>
+        <td th:text="${employee.email}">an@example.com</td>
+        <td th:text="${employee.departmentName}">IT</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

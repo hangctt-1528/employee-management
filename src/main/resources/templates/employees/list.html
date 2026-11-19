@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee list</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:replace="~{fragments :: header}"></nav>
+
+<h1>Employee list</h1>
+
+<!-- Flash message after a successful add -->
+<p class="success" th:if="${successMessage}" th:text="${successMessage}">Employee was added.</p>
+
+<p th:if="${#lists.isEmpty(employees)}">No employees yet.</p>
+
+<div th:unless="${#lists.isEmpty(employees)}">
+    <table th:replace="~{fragments :: employeeTable(${employees})}"></table>
+</div>
+</body>
+</html>

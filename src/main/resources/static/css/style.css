@@ -1,0 +1,41 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 24px;
+}
+
+.menu a {
+    margin-right: 16px;
+}
+
+table {
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+th, td {
+    border: 1px solid #999;
+    padding: 6px 12px;
+    text-align: left;
+}
+
+th {
+    background: #eee;
+}
+
+.field {
+    margin-bottom: 12px;
+}
+
+.field label {
+    display: inline-block;
+    width: 100px;
+}
+
+.error {
+    color: #c00;
+    margin-left: 8px;
+}
+
+.success {
+    color: #070;
+}
