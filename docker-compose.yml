@@ -1,4 +1,24 @@
 services:
+  db:
+    image: mysql:8.4
+    container_name: employee-management-db
+    environment:
+      MYSQL_DATABASE: employee_db
+      MYSQL_USER: employee
+      MYSQL_PASSWORD: employee
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306" # 3307 on the host, so it does not clash with a MySQL already installed
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      # 127.0.0.1 (TCP): during the first start MySQL runs a temporary server without TCP
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   app:
     build: .
     image: employee-management:latest
@@ -6,4 +26,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: default
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/employee_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: employee
+      SPRING_DATASOURCE_PASSWORD: employee
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
