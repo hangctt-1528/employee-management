@@ -9,6 +9,7 @@
         <a th:href="@{/employees/list}">Employee list</a>
         <a th:if="${admin}" th:href="@{/employees/add}">Add employee</a>
         <a th:href="@{/employees/search}">Search</a>
+        <a th:href="@{/employees/statistics}">Statistics</a>
         <span class="user">Logged in as <b th:text="${currentUsername}">user</b>
             (<span th:if="${admin}">ADMIN</span><span th:unless="${admin}">USER</span>)</span>
         <form class="inline-form" th:action="@{/logout}" method="post">
@@ -40,6 +41,32 @@
     </tr>
     </tbody>
 </table>
+
+<!-- "Showing 11-20 of 23" + Prev / page numbers / Next.
+     path = page URL (with the search conditions, built by EmployeeWebController); the links add page and size. -->
+<div th:fragment="pagination(employeePage, path)" class="pagination">
+    <p class="hint" th:unless="${#lists.isEmpty(employeePage.content)}">
+        Showing <span th:text="${employeePage.fromItem()}">1</span>–<span th:text="${employeePage.toItem()}">10</span>
+        of <span th:text="${employeePage.totalElements}">23</span>
+        · Page <span th:text="${employeePage.page + 1}">1</span> of <span th:text="${employeePage.totalPages}">3</span>
+    </p>
+    <p th:if="${#lists.isEmpty(employeePage.content) and employeePage.totalElements > 0}">
+        Page <span th:text="${employeePage.page + 1}">9</span> does not exist.
+        <a th:href="@{${path}(page=${employeePage.totalPages - 1}, size=${employeePage.size})}">Go to the last page</a>
+    </p>
+    <nav th:if="${employeePage.totalPages > 1 and !#lists.isEmpty(employeePage.content)}" class="pages">
+        <a th:unless="${employeePage.first}"
+           th:href="@{${path}(page=${employeePage.page - 1}, size=${employeePage.size})}">« Prev</a>
+        <th:block th:each="i : ${#numbers.sequence(0, employeePage.totalPages - 1)}">
+            <span th:if="${i == employeePage.page}" class="current" th:text="${i + 1}">1</span>
+            <a th:unless="${i == employeePage.page}"
+               th:href="@{${path}(page=${i}, size=${employeePage.size})}"
+               th:text="${i + 1}">2</a>
+        </th:block>
+        <a th:unless="${employeePage.last}"
+           th:href="@{${path}(page=${employeePage.page + 1}, size=${employeePage.size})}">Next »</a>
+    </nav>
+</div>
 
 </body>
 </html>

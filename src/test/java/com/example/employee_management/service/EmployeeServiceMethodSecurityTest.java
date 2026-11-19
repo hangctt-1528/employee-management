@@ -11,7 +11,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.exception.EmployeeNotFoundException;
 
-// Proves the second line of defence: @PreAuthorize on EmployeeService (MethodSecurityConfig).
+// Proves the second line of defence: @PreAuthorize on EmployeeService (@EnableMethodSecurity in AppConfig).
 // The service is called directly, so no URL rule of SecurityConfig is involved.
 // No data is changed: the ADMIN calls use an unknown id and stop in the service with 404-type exceptions.
 @SpringBootTest
@@ -43,7 +43,7 @@ class EmployeeServiceMethodSecurityTest {
 	@Test
 	@WithMockUser(roles = "USER")
 	void userCanStillRead() {
-		employeeService.getAllEmployees(); // no exception: read methods have no @PreAuthorize
+		employeeService.getEmployeePage(null, null, 0, 10); // no exception: read methods have no @PreAuthorize
 	}
 
 }

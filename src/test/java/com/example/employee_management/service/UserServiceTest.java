@@ -15,18 +15,17 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.example.employee_management.config.AppConfig;
 import com.example.employee_management.dto.RegisterForm;
-import com.example.employee_management.dto.UserResponse;
 import com.example.employee_management.entity.AppUser;
 import com.example.employee_management.exception.DuplicateUsernameException;
 import com.example.employee_management.repository.AppUserRepository;
 
-// UserService with the real repository (H2) and the real BCrypt PasswordEncoder from AppConfig
+// UserService with the real repository (H2) and a real BCrypt PasswordEncoder
 @DataJpaTest
-@Import({ UserService.class, AppConfig.class })
+@Import({ UserService.class, BCryptPasswordEncoder.class })
 @ExtendWith(OutputCaptureExtension.class)
 class UserServiceTest {
 
@@ -45,11 +44,11 @@ class UserServiceTest {
 
 	@Test
 	void registerCreatesAUserWithAHashedPassword() {
-		UserResponse created = userService.register(form("  Binh ", "binh12345"));
+		userService.register(form("  Binh ", "binh12345"));
 
-		assertEquals("binh", created.getUsername()); // trimmed + lower case
-		assertEquals(AppUser.USER, created.getRole());
-		String hash = appUserRepository.findByUsername("binh").getPassword();
+		AppUser saved = appUserRepository.findByUsername("binh"); // trimmed + lower case
+		assertEquals(AppUser.USER, saved.getRole());
+		String hash = saved.getPassword();
 		assertNotEquals("binh12345", hash);
 		assertTrue(hash.startsWith("$2a$")); // BCrypt
 		assertTrue(passwordEncoder.matches("binh12345", hash));

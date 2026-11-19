@@ -8,7 +8,8 @@ services:
       MYSQL_PASSWORD: employee
       MYSQL_ROOT_PASSWORD: root
     ports:
-      - "3307:3306" # 3307 on the host, so it does not clash with a MySQL already installed
+      # 127.0.0.1: only this machine can reach MySQL (not the network); 3307 avoids a local MySQL on 3306
+      - "127.0.0.1:3307:3306"
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:

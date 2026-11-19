@@ -15,7 +15,11 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
+# Run as a normal user, not root: a bug in the app cannot then change the container's system files
+RUN groupadd --system app && useradd --system --gid app app
+
 COPY --from=build /app/target/*.jar app.jar
 
+USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

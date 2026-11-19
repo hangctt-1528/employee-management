@@ -28,10 +28,11 @@
 <!-- Results are shown only after the form was submitted -->
 <div th:if="${searched}">
     <h2>Results</h2>
-    <p th:if="${#lists.isEmpty(employees)}">No employees found.</p>
-    <div th:unless="${#lists.isEmpty(employees)}">
-        <table th:replace="~{fragments :: employeeTable(${employees})}"></table>
+    <p th:if="${employeePage.totalElements == 0}">No employees found.</p>
+    <div th:unless="${#lists.isEmpty(employeePage.content)}">
+        <table th:replace="~{fragments :: employeeTable(${employeePage.content})}"></table>
     </div>
+    <div th:replace="~{fragments :: pagination(${employeePage}, ${pagePath})}"></div>
 </div>
 </body>
 </html>

@@ -1,11 +1,15 @@
 package com.example.employee_management.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.employee_management.dto.DepartmentEmployeeCount;
 import com.example.employee_management.dto.EmployeeCountResponse;
+import com.example.employee_management.dto.EmployeeStatisticsResponse;
 import com.example.employee_management.service.ReportService;
 
 @RestController
@@ -22,6 +26,18 @@ public class ReportController {
 	@GetMapping("/employee-count")
 	public ResponseEntity<EmployeeCountResponse> getEmployeeCount() {
 		return ResponseEntity.ok(reportService.getEmployeeCount());
+	}
+
+	// GET /api/reports/employees-by-department
+	@GetMapping("/employees-by-department")
+	public ResponseEntity<List<DepartmentEmployeeCount>> getEmployeesByDepartment() {
+		return ResponseEntity.ok(reportService.getEmployeesByDepartment());
+	}
+
+	// GET /api/reports/statistics
+	@GetMapping("/statistics")
+	public ResponseEntity<EmployeeStatisticsResponse> getStatistics() {
+		return ResponseEntity.ok(reportService.getStatistics());
 	}
 
 }

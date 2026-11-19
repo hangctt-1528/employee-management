@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-// Runs every 30 s on the "scheduling-1" thread (needs @EnableScheduling, see SchedulingConfig).
+// Runs every 30 s on the "scheduling-1" thread (needs @EnableScheduling, see AppConfig).
 // fixedRate: the first run is right after startup.
 @Component
 public class SystemStatusTask {

@@ -5,17 +5,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
+// Table "department" (Boot's default name for the class)
 @Entity
-@Table(name = "department")
 public class Department {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL AUTO_INCREMENT
 	private Long id;
 
-	@Column(name = "name", nullable = false, unique = true, length = 100)
+	@Column(nullable = false, unique = true, length = 100)
 	private String name;
 
 	// JPA needs an empty constructor to build objects from table rows

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistics</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:replace="~{fragments :: header}"></nav>
+
+<h1>Statistics</h1>
+
+<p class="total">Total employees: <b th:text="${statistics.totalEmployees}">0</b></p>
+
+<h2>Employees by department</h2>
+<p th:if="${#lists.isEmpty(statistics.departments)}">No departments yet.</p>
+<table th:unless="${#lists.isEmpty(statistics.departments)}">
+    <thead>
+    <tr>
+        <th>Department</th>
+        <th>Employees</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="row : ${statistics.departments}">
+        <td th:text="${row.departmentName}">IT</td>
+        <td class="number" th:text="${row.employeeCount}">0</td>
+    </tr>
+    </tbody>
+    <tfoot>
+    <tr>
+        <th>Total</th>
+        <th class="number" th:text="${statistics.totalEmployees}">0</th>
+    </tr>
+    </tfoot>
+</table>
+
+<p class="hint">Generated at
+    <span th:text="${#temporals.format(statistics.generatedAt, 'yyyy-MM-dd HH:mm:ss')}">2026-11-19 10:15:30</span>.
+    Not cached: reload the page to refresh.</p>
+</body>
+</html>

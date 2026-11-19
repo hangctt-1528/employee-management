@@ -2,6 +2,7 @@ package com.example.employee_management.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.example.employee_management.controller.AuthWebController;
 import com.example.employee_management.dto.ErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +27,8 @@ import jakarta.servlet.http.HttpServletRequest;
 // Spring picks the handler whose exception type is the closest match, so Exception.class is only the fallback.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	public static final String ACCESS_DENIED_MESSAGE = "You do not have permission to do this";
 
 	private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -48,6 +50,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleDuplicateEmail(DuplicateEmailException ex,
 			HttpServletRequest request) {
 		return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+	}
+
+	// Bad page or size, e.g. ?size=500
+	@ExceptionHandler(InvalidPagingException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidPaging(InvalidPagingException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
 	}
 
 	// ---- Bad requests detected by Spring ----
@@ -95,8 +103,15 @@ public class GlobalExceptionHandler {
 		return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type must be application/json", request);
 	}
 
+	// JSON only for /api/** and /actuator/**. For a web URL (e.g. /employees/nope) the same exception is thrown
+	// again, so Spring answers 404 and Spring Boot shows templates/error.html.
 	@ExceptionHandler(NoResourceFoundException.class)
-	public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+	public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request)
+			throws NoResourceFoundException {
+		String uri = request.getRequestURI();
+		if (!uri.startsWith("/api/") && !uri.startsWith("/actuator/")) {
+			throw ex;
+		}
 		return buildResponse(HttpStatus.NOT_FOUND, "No endpoint at this URL", request);
 	}
 
@@ -119,7 +134,15 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
 		logger.warn("Access denied on {} {}", request.getMethod(), request.getRequestURI());
-		return buildResponse(HttpStatus.FORBIDDEN, AuthWebController.ACCESS_DENIED_MESSAGE, request);
+		return buildResponse(HttpStatus.FORBIDDEN, ACCESS_DENIED_MESSAGE, request);
+	}
+
+	// Two requests with the same email / username at the same time: the UNIQUE column stops the second one
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
+			HttpServletRequest request) {
+		return buildResponse(HttpStatus.CONFLICT, "The data conflicts with existing data (e.g. email already used)",
+				request);
 	}
 
 	// ---- Anything else: 500 with a fixed message (never show internal details to the client) ----

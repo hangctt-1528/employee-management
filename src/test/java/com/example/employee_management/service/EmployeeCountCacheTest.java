@@ -12,8 +12,9 @@ import com.example.employee_management.dto.EmployeeCountResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.entity.Department;
 import com.example.employee_management.repository.DepartmentRepository;
+import com.example.employee_management.scheduler.EmployeeCountCacheTask;
 
-// The whole app with the real cache (CacheConfig + spring.cache.* from src/test/resources/application.yml).
+// The whole app with the real cache (@EnableCaching in AppConfig + spring.cache.* in application.yml).
 // ReportService here is the Spring proxy, so @Cacheable / @CacheEvict work.
 @SpringBootTest
 @DirtiesContext // this test saves an employee; give later tests a fresh database
@@ -24,6 +25,9 @@ class EmployeeCountCacheTest {
 	private ReportService reportService;
 
 	@Autowired
+	private EmployeeCountCacheTask employeeCountCacheTask;
+
+	@Autowired
 	private EmployeeService employeeService;
 
 	@Autowired
@@ -31,7 +35,7 @@ class EmployeeCountCacheTest {
 
 	@Test
 	void countIsCachedUntilTheCacheIsCleared() {
-		reportService.clearEmployeeCountCache(); // start from an empty cache
+		employeeCountCacheTask.clearEmployeeCountCache(); // start from an empty cache
 		Department department = departmentRepository.findAll().get(0); // created by DataSeeder
 
 		EmployeeCountResponse first = reportService.getEmployeeCount();
@@ -42,7 +46,7 @@ class EmployeeCountCacheTest {
 		assertEquals(first.getTotalEmployees(), second.getTotalEmployees());
 		assertEquals(first.getCountedAt(), second.getCountedAt());
 
-		reportService.clearEmployeeCountCache(); // what EmployeeCountCacheTask does every minute
+		employeeCountCacheTask.clearEmployeeCountCache(); // what the scheduler does every minute
 		EmployeeCountResponse third = reportService.getEmployeeCount();
 
 		assertEquals(first.getTotalEmployees() + 1, third.getTotalEmployees());

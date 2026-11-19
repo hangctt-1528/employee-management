@@ -28,16 +28,19 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.employee_management.config.JwtConfig;
 import com.example.employee_management.config.SecurityConfig;
+import com.example.employee_management.dto.EmployeePageResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.exception.DepartmentNotFoundException;
 import com.example.employee_management.exception.DuplicateEmailException;
+import com.example.employee_management.exception.InvalidPagingException;
 import com.example.employee_management.exception.EmployeeNotFoundException;
 import com.example.employee_management.service.EmployeeService;
 
@@ -64,16 +67,52 @@ class EmployeeControllerTest {
 	// ---- success ----
 
 	@Test
-	void getEmployeesPassesBothParamsToSearch() throws Exception {
+	void getEmployeesPassesBothParamsToSearchWithDefaultPage() throws Exception {
 		List<EmployeeResponse> found = new ArrayList<>();
 		found.add(sample());
-		when(employeeService.searchEmployees("an", 1L)).thenReturn(found);
+		when(employeeService.getEmployeePage("an", 1L, 0, 10))
+				.thenReturn(new EmployeePageResponse(found, 0, 10, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/employees").param("name", "an").param("departmentId", "1"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("Nguyen Van An"))
-				.andExpect(jsonPath("$[0].departmentName").value("IT"));
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].name").value("Nguyen Van An"))
+				.andExpect(jsonPath("$.content[0].departmentName").value("IT"))
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(10))
+				.andExpect(jsonPath("$.totalElements").value(1))
+				.andExpect(jsonPath("$.totalPages").value(1))
+				.andExpect(jsonPath("$.first").value(true))
+				.andExpect(jsonPath("$.last").value(true))
+				.andExpect(jsonPath("$.fromItem").doesNotExist()); // helper for the web page, not in the JSON
+	}
+
+	@Test
+	void getEmployeesPassesPageAndSize() throws Exception {
+		when(employeeService.getEmployeePage(null, null, 2, 5))
+				.thenReturn(new EmployeePageResponse(new ArrayList<>(), 2, 5, 12, 3, false, true));
+
+		mockMvc.perform(get("/api/employees").param("page", "2").param("size", "5"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.page").value(2))
+				.andExpect(jsonPath("$.totalPages").value(3));
+	}
+
+	@Test
+	void invalidSizeReturns400() throws Exception {
+		when(employeeService.getEmployeePage(null, null, 0, 500))
+				.thenThrow(new InvalidPagingException("size must be between 1 and 100"));
+
+		mockMvc.perform(get("/api/employees").param("size", "500"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("size must be between 1 and 100"));
+	}
+
+	@Test
+	void pageThatIsNotANumberReturns400() throws Exception {
+		mockMvc.perform(get("/api/employees").param("page", "abc"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Invalid value 'abc' for parameter 'page'"));
 	}
 
 	@Test
@@ -311,6 +350,17 @@ class EmployeeControllerTest {
 		assertTrue(log.contains("ERROR"));
 		assertTrue(log.contains("Unexpected error on GET /api/employees/1"));
 		assertTrue(log.contains("secret database detail"));
+	}
+
+	// Two requests with the same email at the same time: the UNIQUE column stops the second one -> 409, not 500
+	@Test
+	void uniqueConstraintViolationReturns409() throws Exception {
+		when(employeeService.addEmployee(any(EmployeeRequest.class)))
+				.thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+		mockMvc.perform(post("/api/employees").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.status").value(409));
 	}
 
 }

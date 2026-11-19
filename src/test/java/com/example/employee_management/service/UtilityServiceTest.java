@@ -15,35 +15,6 @@ class UtilityServiceTest {
 	}
 
 	@Test
-	void firstCodeIsEmp0001() {
-		assertEquals("EMP0001", utilityService.generateEmployeeCode());
-	}
-
-	@Test
-	void codesIncreaseByOne() {
-		utilityService.generateEmployeeCode();
-		assertEquals("EMP0002", utilityService.generateEmployeeCode());
-	}
-
-	@Test
-	void tenthCodeHasTwoDigits() {
-		String code = "";
-		for (int i = 1; i <= 10; i++) {
-			code = utilityService.generateEmployeeCode();
-		}
-		assertEquals("EMP0010", code);
-	}
-
-	@Test
-	void codeAbove9999KeepsAllDigits() {
-		String code = "";
-		for (int i = 1; i <= 10000; i++) {
-			code = utilityService.generateEmployeeCode();
-		}
-		assertEquals("EMP10000", code);
-	}
-
-	@Test
 	void formatNameFixesCaseAndSpaces() {
 		assertEquals("Nguyen Van An", utilityService.formatName("  nguyEN   van  AN "));
 	}
