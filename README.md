@@ -1,6 +1,6 @@
 # Employee Management
 
-Spring Boot 4 practice project (Java 25): web pages (Thymeleaf) and a REST API for employees and departments, stored in MySQL with Spring Data JPA. Logging with SLF4J + Logback, profiles `dev` / `prod`.
+Spring Boot 4 practice project (Java 25): web pages (Thymeleaf) and a REST API for employees and departments, stored in MySQL with Spring Data JPA. Logging with SLF4J + Logback, profiles `dev` / `prod`. Actuator (health, metrics), a scheduled task and a cached report API.
 
 ## Prerequisite
 
@@ -21,6 +21,8 @@ Docker Compose runs the app with the `prod` profile (see [Profiles](#profiles)).
 - App: http://localhost:8080
 - Web pages: http://localhost:8080/employees/list (see [Web pages](#web-pages))
 - Hello API: http://localhost:8080/hello returns `Hello, Employee Management!`
+- Report API: http://localhost:8080/api/reports/employee-count
+- Actuator: http://localhost:8080/actuator/health (same port, see [Actuator](#actuator))
 - MySQL: `localhost:3307` (inside Docker: `db:3306`), database `employee_db`, user `employee` / password `employee` (development only)
 - Default accounts: none yet.
 
@@ -71,8 +73,35 @@ docker compose logs -f app
 | Refused: email already used, employee or department not found | `WARN` | `Cannot add employee: email is already used`, `Employee not found: id=999` |
 | Start of each add / update / delete (`dev` only) | `DEBUG` | `Adding employee: departmentId=1` |
 | Unexpected error (500) | `ERROR` + stack trace | `Unexpected error on GET /api/employees/1` |
+| Every 30 seconds | `INFO` | `c.e.e.scheduler.SystemStatusTask : System running` |
+| Report counted in the database / report cache cleared (`dev` only) | `DEBUG` | `Counting employees in the database`, `Employee count cache cleared` |
 
 Logs contain only ids, never names or emails.
+
+## Actuator
+
+Spring Boot Actuator runs on the same port 8080. Only these endpoints are open; any other `/actuator/...` path returns `404`.
+
+| URL | Shows |
+|---|---|
+| http://localhost:8080/actuator/health | `UP` / `DOWN` (`503`), with details: database (`db`), disk space |
+| http://localhost:8080/actuator/metrics | Names of all metrics; one metric: e.g. `/actuator/metrics/http.server.requests` or `/actuator/metrics/jvm.memory.used` |
+| http://localhost:8080/actuator/caches | The caches (`employeeCount`); `DELETE` on this URL clears them |
+| http://localhost:8080/actuator/scheduledtasks | The scheduled tasks and their interval |
+
+There is no login yet (Lab 9), so don't expose this app to the Internet.
+
+## Scheduled tasks and cache
+
+| Task | Interval | What it does |
+|---|---|---|
+| `SystemStatusTask` | 30 s (first run at startup) | Logs `System running` |
+| `EmployeeCountCacheTask` | 60 s | Clears the cache of the report API |
+
+`GET /api/reports/employee-count` is cached, so its result is at most 1 minute old:
+
+- Call it twice: the same `countedAt` means the second answer came from the cache (no database query).
+- Add an employee: the total does **not** change until the cache is cleared (up to 1 minute). This is on purpose.
 
 ## Web pages
 
@@ -97,6 +126,7 @@ Errors on these pages are shown as an HTML error page.
 | POST | `/api/employees` | Add: `201` + `Location`; `400` invalid data or unknown department; `409` email already used |
 | PUT | `/api/employees/{id}` | Update: `200`; `400` as above; `404` if no employee; `409` if another employee has the email |
 | DELETE | `/api/employees/{id}` | Delete: `204`, or `404` |
+| GET | `/api/reports/employee-count` | Total number of employees, e.g. `{"totalEmployees":5,"countedAt":"2026-11-19T10:15:30.123"}`; cached up to 1 minute (`countedAt` = when it was counted) |
 
 Validation rules for the POST / PUT body:
 
@@ -121,6 +151,8 @@ curl -i -X PUT http://localhost:8080/api/employees/1 \
   -d '{"name":"nguyen van an","email":"an.nguyen@example.com","departmentId":2}'
 
 curl -i -X DELETE http://localhost:8080/api/employees/1
+
+curl -i http://localhost:8080/api/reports/employee-count
 ```
 
 On Windows PowerShell:

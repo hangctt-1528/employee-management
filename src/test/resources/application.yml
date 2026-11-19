@@ -5,10 +5,29 @@ spring:
   application:
     name: employee-management
   datasource:
-    url: "jdbc:h2:mem:employee_db;MODE=MySQL;DB_CLOSE_DELAY=-1"
+    # ${random.uuid}: every Spring test context gets its own in-memory database, so a context closed by
+    # @DirtiesContext (create-drop drops the tables) cannot break another context that is still cached
+    url: "jdbc:h2:mem:employee_db_${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1"
     username: sa
     password: ""
   jpa:
     hibernate:
       ddl-auto: create-drop
     open-in-view: false
+  cache:
+    # In-memory cache (ConcurrentMap), no expiry; EmployeeCountCacheTask clears it every minute
+    type: simple
+    # Only this cache exists
+    cache-names: employeeCount
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Actuator endpoints open over HTTP (same port 8080). Never use "*": env and heapdump show secrets.
+        # Lab 9 will protect them.
+        include: health,metrics,caches,scheduledtasks
+  endpoint:
+    health:
+      # Show db / diskSpace in /actuator/health (no login yet; Lab 9: when-authorized)
+      show-details: always
