@@ -6,10 +6,15 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.employee_management.dto.EmployeePageResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.entity.Department;
@@ -17,6 +22,7 @@ import com.example.employee_management.entity.Employee;
 import com.example.employee_management.exception.DepartmentNotFoundException;
 import com.example.employee_management.exception.DuplicateEmailException;
 import com.example.employee_management.exception.EmployeeNotFoundException;
+import com.example.employee_management.exception.InvalidPagingException;
 import com.example.employee_management.repository.DepartmentRepository;
 import com.example.employee_management.repository.EmployeeRepository;
 
@@ -25,6 +31,8 @@ import com.example.employee_management.repository.EmployeeRepository;
 @Service
 @Transactional(readOnly = true)
 public class EmployeeService {
+
+	public static final int MAX_PAGE_SIZE = 100;
 
 	// SLF4J API; Spring Boot uses Logback behind it. The level per profile is set in application-dev.yml / -prod.yml.
 	// Logs contain only ids, never names or emails (personal data).
@@ -41,27 +49,37 @@ public class EmployeeService {
 		this.utilityService = utilityService;
 	}
 
-	public List<EmployeeResponse> getAllEmployees() {
-		return toResponseList(employeeRepository.findAll());
-	}
-
-	// Search by name (contains, ignoring case), by department, or both (AND).
-	// No condition -> everyone.
-	public List<EmployeeResponse> searchEmployees(String name, Long departmentId) {
+	// One page of employees, filtered by name (contains, ignoring case), by department, or both (AND).
+	// No condition -> everyone. Always sorted by id, so the pages do not overlap.
+	// page is 0-based; a page after the last one is simply empty.
+	public EmployeePageResponse getEmployeePage(String name, Long departmentId, int page, int size) {
+		if (page < 0) {
+			throw new InvalidPagingException("page must be 0 or more");
+		}
+		if (size < 1 || size > MAX_PAGE_SIZE) {
+			throw new InvalidPagingException("size must be between 1 and " + MAX_PAGE_SIZE);
+		}
+		// The offset (page * size) must fit in an int, otherwise Spring Data fails with a 500
+		if ((long) page * size >= Integer.MAX_VALUE) {
+			throw new InvalidPagingException("page is too large");
+		}
+		Pageable pageable = PageRequest.of(page, size, Sort.by("id"));
 		boolean hasName = name != null && !name.trim().isEmpty();
 		boolean hasDepartment = departmentId != null;
 
-		List<Employee> employees;
+		Page<Employee> result;
 		if (hasName && hasDepartment) {
-			employees = employeeRepository.findByNameContainingIgnoreCaseAndDepartmentId(name.trim(), departmentId);
+			result = employeeRepository.findByNameContainingIgnoreCaseAndDepartmentId(name.trim(), departmentId,
+					pageable);
 		} else if (hasName) {
-			employees = employeeRepository.findByNameContainingIgnoreCase(name.trim());
+			result = employeeRepository.findByNameContainingIgnoreCase(name.trim(), pageable);
 		} else if (hasDepartment) {
-			employees = employeeRepository.findByDepartmentId(departmentId);
+			result = employeeRepository.findByDepartmentId(departmentId, pageable);
 		} else {
-			employees = employeeRepository.findAll();
+			result = employeeRepository.findAll(pageable);
 		}
-		return toResponseList(employees);
+		return new EmployeePageResponse(toResponseList(result.getContent()), result.getNumber(), result.getSize(),
+				result.getTotalElements(), result.getTotalPages(), result.isFirst(), result.isLast());
 	}
 
 	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
@@ -103,7 +121,9 @@ public class EmployeeService {
 		employee.setName(utilityService.formatName(request.getName()));
 		employee.setEmail(email);
 		employee.setDepartment(department);
-		// No save(): the entity is managed, Hibernate writes the UPDATE when the transaction commits
+		// No save(): the entity is managed. flush() sends the UPDATE now (not at commit), so the log below
+		// is written only when the database accepted it.
+		employeeRepository.flush();
 		logger.info("Employee updated: id={}, departmentId={}", id, department.getId());
 		return toResponse(employee);
 	}

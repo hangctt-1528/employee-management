@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -40,11 +42,13 @@ import com.example.employee_management.config.JwtConfig;
 import com.example.employee_management.config.SecurityConfig;
 import com.example.employee_management.dto.DepartmentEmployeeCount;
 import com.example.employee_management.dto.DepartmentResponse;
+import com.example.employee_management.dto.EmployeePageResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
 import com.example.employee_management.dto.EmployeeStatisticsResponse;
 import com.example.employee_management.exception.DepartmentNotFoundException;
 import com.example.employee_management.exception.DuplicateEmailException;
+import com.example.employee_management.exception.InvalidPagingException;
 import com.example.employee_management.service.DepartmentService;
 import com.example.employee_management.service.EmployeeService;
 import com.example.employee_management.service.ReportService;
@@ -82,23 +86,99 @@ class EmployeeWebControllerTest {
 		return employees;
 	}
 
+	// The only page (page 0, size 10) holding these employees
+	private EmployeePageResponse page(List<EmployeeResponse> employees) {
+		int totalPages = 1;
+		if (employees.isEmpty()) {
+			totalPages = 0;
+		}
+		return new EmployeePageResponse(employees, 0, 10, employees.size(), totalPages, true, true);
+	}
+
+	// ---- Pagination ----
+
+	// Page 2 of 3 (23 employees, 10 per page): Prev, the numbers and Next keep the search conditions
+	@Test
+	void searchShowsPageLinksWithTheConditions() throws Exception {
+		when(employeeService.getEmployeePage("an", 1L, 1, 10))
+				.thenReturn(new EmployeePageResponse(oneEmployee(), 1, 10, 23, 3, false, false));
+
+		mockMvc.perform(get("/employees/search").param("name", "an").param("departmentId", "1").param("page", "1"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Showing <span>11</span>–<span>11</span>")))
+				.andExpect(content().string(containsString("of <span>23</span>")))
+				.andExpect(content().string(containsString("Page <span>2</span> of <span>3</span>")))
+				.andExpect(content().string(containsString("href=\"/employees/search?name=an&amp;departmentId=1&amp;page=0&amp;size=10\"")))
+				.andExpect(content().string(containsString("href=\"/employees/search?name=an&amp;departmentId=1&amp;page=2&amp;size=10\"")))
+				.andExpect(content().string(containsString("<span class=\"current\">2</span>")));
+	}
+
+	// "+" and "{...}" in the name must be encoded in the page links, or page 2 would search something else
+	@Test
+	void pageLinksEncodeSpecialCharactersOfTheName() throws Exception {
+		when(employeeService.getEmployeePage("a+b {page}", null, 0, 10))
+				.thenReturn(new EmployeePageResponse(oneEmployee(), 0, 10, 15, 2, true, false));
+
+		mockMvc.perform(get("/employees/search").param("name", "a+b {page}"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString(
+						"href=\"/employees/search?name=a%2Bb%20%7Bpage%7D&amp;page=1&amp;size=10\"")));
+	}
+
+	@Test
+	void pageAfterTheLastOneShowsALinkBack() throws Exception {
+		when(employeeService.getEmployeePage(null, null, 5, 10))
+				.thenReturn(new EmployeePageResponse(new ArrayList<>(), 5, 10, 23, 3, false, true));
+
+		mockMvc.perform(get("/employees/list").param("page", "5"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Page <span>6</span> does not exist.")))
+				.andExpect(content().string(containsString("href=\"/employees/list?page=2&amp;size=10\"")));
+	}
+
+	// Two requests saving the same email at the same moment: the UNIQUE column stops one -> form error, not 500
+	@Test
+	void uniqueConstraintViolationIsShownOnEmailField() throws Exception {
+		when(employeeService.addEmployee(any(EmployeeRequest.class)))
+				.thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+		mockMvc.perform(post("/employees/add").with(csrf())
+						.param("name", "an")
+						.param("email", "an@example.com")
+						.param("departmentId", "1"))
+				.andExpect(status().isOk())
+				.andExpect(view().name("employees/add"))
+				.andExpect(model().attributeHasFieldErrorCode("employee", "email", "duplicate"));
+	}
+
+	@Test
+	void invalidSizeShows400Page() throws Exception {
+		when(employeeService.getEmployeePage(null, null, 0, 500))
+				.thenThrow(new InvalidPagingException("size must be between 1 and 100"));
+
+		mockMvc.perform(get("/employees/list").param("size", "500"))
+				.andExpect(status().isBadRequest())
+				.andExpect(view().name("error"))
+				.andExpect(content().string(containsString("size must be between 1 and 100")));
+	}
+
 	// ---- /employees/list ----
 
 	@Test
 	void listShowsEmployeesFromService() throws Exception {
-		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(status().isOk())
 				.andExpect(view().name("employees/list"))
-				.andExpect(model().attributeExists("employees"))
+				.andExpect(model().attributeExists("employeePage"))
 				.andExpect(content().string(containsString("Nguyen Van An")))
 				.andExpect(content().string(containsString("an@example.com")));
 	}
 
 	@Test
 	void listWithoutEmployeesShowsMessage() throws Exception {
-		when(employeeService.getAllEmployees()).thenReturn(new ArrayList<>());
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(new ArrayList<>()));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(status().isOk())
@@ -107,7 +187,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void listShowsFlashMessage() throws Exception {
-		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/list").flashAttr("successMessage", "Employee Nguyen Van An was added."))
 				.andExpect(content().string(containsString("Employee Nguyen Van An was added.")));
@@ -117,7 +197,7 @@ class EmployeeWebControllerTest {
 	void listEscapesHtmlInNames() throws Exception {
 		List<EmployeeResponse> employees = new ArrayList<>();
 		employees.add(new EmployeeResponse(1L, "<script>alert(1)</script>", "x@example.com", 1L, "IT"));
-		when(employeeService.getAllEmployees()).thenReturn(employees);
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(employees));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(content().string(containsString("&lt;script&gt;")))
@@ -234,14 +314,14 @@ class EmployeeWebControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(view().name("employees/search"))
 				.andExpect(model().attribute("searched", false))
-				.andExpect(model().attributeDoesNotExist("employees"))
+				.andExpect(model().attributeDoesNotExist("employeePage"))
 				.andExpect(content().string(not(containsString("<h2>Results</h2>"))));
-		verify(employeeService, never()).searchEmployees(any(), any());
+		verify(employeeService, never()).getEmployeePage(any(), any(), anyInt(), anyInt());
 	}
 
 	@Test
 	void searchShowsResultsAndKeepsConditions() throws Exception {
-		when(employeeService.searchEmployees("an", 1L)).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage("an", 1L, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/search").param("name", "an").param("departmentId", "1"))
 				.andExpect(status().isOk())
@@ -253,16 +333,16 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void searchWithAllDepartmentsPassesNull() throws Exception {
-		when(employeeService.searchEmployees("an", null)).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage("an", null, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/search").param("name", "an").param("departmentId", ""))
 				.andExpect(status().isOk());
-		verify(employeeService).searchEmployees("an", null);
+		verify(employeeService).getEmployeePage("an", null, 0, 10);
 	}
 
 	@Test
 	void searchWithoutResultsShowsMessage() throws Exception {
-		when(employeeService.searchEmployees("xyz", null)).thenReturn(new ArrayList<>());
+		when(employeeService.getEmployeePage("xyz", null, 0, 10)).thenReturn(page(new ArrayList<>()));
 
 		mockMvc.perform(get("/employees/search").param("name", "xyz"))
 				.andExpect(content().string(containsString("No employees found.")));
@@ -280,7 +360,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void unexpectedErrorShowsErrorPage() throws Exception {
-		when(employeeService.getAllEmployees()).thenThrow(new RuntimeException("secret database detail"));
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenThrow(new RuntimeException("secret database detail"));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(status().isInternalServerError())
@@ -292,7 +372,7 @@ class EmployeeWebControllerTest {
 	// Lab 7: the details of a 500 go to the log (ERROR + stack trace), not to the page
 	@Test
 	void unexpectedErrorIsLoggedAsError(CapturedOutput output) throws Exception {
-		when(employeeService.getAllEmployees()).thenThrow(new RuntimeException("secret database detail"));
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenThrow(new RuntimeException("secret database detail"));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(status().isInternalServerError());
@@ -308,7 +388,7 @@ class EmployeeWebControllerTest {
 	@Test
 	@WithMockUser(username = "user", roles = "USER")
 	void userSeesTheListWithoutTheAddLink() throws Exception {
-		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(status().isOk())
@@ -319,7 +399,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void adminSeesTheAddLinkAndTheLogoutForm() throws Exception {
-		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+		when(employeeService.getEmployeePage(null, null, 0, 10)).thenReturn(page(oneEmployee()));
 
 		mockMvc.perform(get("/employees/list"))
 				.andExpect(content().string(containsString("href=\"/employees/add\"")))

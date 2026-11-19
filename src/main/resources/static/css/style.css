@@ -239,6 +239,32 @@ p.success {
     font-size: 0.9em;
 }
 
+/* ---- Pagination ---- */
+
+.pagination {
+    margin-top: 12px;
+}
+
+.pages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pages a, .pages .current {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card);
+}
+
+.pages .current {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
 /* ---- Statistics ---- */
 
 .total {

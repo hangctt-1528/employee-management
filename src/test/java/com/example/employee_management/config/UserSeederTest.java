@@ -17,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.employee_management.entity.AppUser;
 import com.example.employee_management.repository.AppUserRepository;
 
-// The whole app: UserSeeder ran at startup with the passwords of src/test/resources/application.yml
+// The whole app: UserSeeder ran at startup with the passwords of src/test/resources/config/application.yml
 @SpringBootTest
 class UserSeederTest {
 

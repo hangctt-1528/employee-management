@@ -160,6 +160,30 @@ curl -u admin:admin123 http://localhost:8080/actuator/metrics
 
 The statistics (`/api/reports/statistics`, `/api/reports/employees-by-department`, `/employees/statistics`) are **not** cached: they always show the current data, so for up to 1 minute their total can differ from `employee-count`.
 
+## Pagination
+
+The employee list is paged with Spring Data (`Pageable` / `Page`): the database returns only one page (`LIMIT` / `OFFSET`) plus a `COUNT` for the totals. Employees are always ordered by `id`.
+
+| Parameter | Default | Rule |
+|---|---|---|
+| `page` | `0` | 0-based (the web pages show it + 1); `0` or more, otherwise `400` |
+| `size` | `10` | `1` to `100`, otherwise `400` |
+
+`GET /api/employees` returns an object (not a plain array):
+
+```json
+{
+  "content": [{"id":11,"name":"Nguyen Van An","email":"an@example.com","departmentId":1,"departmentName":"IT"}],
+  "page": 1, "size": 10, "totalElements": 23, "totalPages": 3, "first": false, "last": false
+}
+```
+
+A page after the last one returns `200` with `"content": []` (the web page shows "Page N does not exist." with a link to the last page).
+
+```bash
+curl -u user:user1234 "http://localhost:8080/api/employees?page=1&size=10"
+```
+
 ## Statistics
 
 Computed in the database:
@@ -183,9 +207,9 @@ Open in a browser (log in first; see [Default accounts](#default-accounts)):
 |---|---|---|
 | http://localhost:8080/login | everyone | Login form |
 | http://localhost:8080/register | everyone | Create a USER account |
-| http://localhost:8080/employees/list | USER, ADMIN | Table of all employees |
+| http://localhost:8080/employees/list | USER, ADMIN | Table of employees, 10 per page (Prev / page numbers / Next) |
 | http://localhost:8080/employees/add | ADMIN | Form to add an employee; invalid data is shown under each field |
-| http://localhost:8080/employees/search | USER, ADMIN | Search by name and/or department, with the results below the form |
+| http://localhost:8080/employees/search | USER, ADMIN | Search by name and/or department, with the results below the form (paged; the page links keep the conditions) |
 | http://localhost:8080/employees/statistics | USER, ADMIN | Total employees and employees per department (see [Statistics](#statistics)) |
 
 Errors on these pages are shown as an HTML error page (`403` when the role is not allowed).
@@ -197,8 +221,8 @@ Errors on these pages are shown as an HTML error page (`403` when the role is no
 | POST | `/api/auth/login` | everyone | `{"username","password"}` -> `200` + JWT; `401` wrong username or password; `400` blank field |
 | GET | `/api/auth/me` | logged in | Who you are: `{"id":1,"username":"admin","role":"ADMIN"}` |
 | GET | `/api/departments` | USER, ADMIN | List of departments (use their `id` as `departmentId`) |
-| GET | `/api/employees` | USER, ADMIN | List of employees |
-| GET | `/api/employees?name=an&departmentId=1` | USER, ADMIN | Search by name (contains, ignores case) and/or department; both given = AND |
+| GET | `/api/employees` | USER, ADMIN | One page of employees (10 by default), see [Pagination](#pagination) |
+| GET | `/api/employees?name=an&departmentId=1&page=0&size=10` | USER, ADMIN | Search by name (contains, ignores case) and/or department; both given = AND; paged |
 | GET | `/api/employees/{id}` | USER, ADMIN | One employee; `404` if not found; `400` if `id` is not a number |
 | POST | `/api/employees` | ADMIN | Add: `201` + `Location`; `400` invalid data or unknown department; `409` email already used |
 | PUT | `/api/employees/{id}` | ADMIN | Update: `200`; `400` as above; `404` if no employee; `409` if another employee has the email |
@@ -223,7 +247,7 @@ curl -i -u admin:admin123 -X POST http://localhost:8080/api/employees \
   -d '{"name":"nguyen van an","email":"an@example.com","departmentId":1}'
 # 201, {"id":1,"name":"Nguyen Van An","email":"an@example.com","departmentId":1,"departmentName":"IT"}
 
-curl -i -u user:user1234 "http://localhost:8080/api/employees?name=an&departmentId=1"
+curl -i -u user:user1234 "http://localhost:8080/api/employees?name=an&departmentId=1&page=0&size=10"
 
 curl -i -u admin:admin123 -X PUT http://localhost:8080/api/employees/1 \
   -H "Content-Type: application/json" \
@@ -248,7 +272,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/employees -Headers
 
 ## Errors
 
-Every error of the REST API (`/api/...`, `/actuator/...`, and unknown URLs) returns the same JSON shape:
+Every error of the REST API (`/api/...` and `/actuator/...`, including unknown URLs there) returns the same JSON shape. Errors of the web pages (and unknown web URLs such as `/employees/nope`) show the HTML error page instead.
 
 ```json
 {
@@ -268,7 +292,7 @@ Every error of the REST API (`/api/...`, `/actuator/...`, and unknown URLs) retu
 
 | Status | When |
 |---|---|
-| `400` | Validation failed (`fieldErrors`), unknown department, broken JSON, or a value of the wrong type (e.g. `/api/employees/abc`) |
+| `400` | Validation failed (`fieldErrors`), unknown department, broken JSON, a value of the wrong type (e.g. `/api/employees/abc`), or `page` < 0 / `size` not in 1..100 |
 | `401` | Not logged in, wrong username or password, bad or expired token |
 | `403` | Logged in, but the role is not allowed (e.g. USER deletes an employee) |
 | `404` | Employee not found, or no endpoint at this URL |
@@ -292,7 +316,7 @@ curl -i http://localhost:8080/api/employees
 
 ## Tests
 
-`./mvnw test` uses an in-memory H2 database, so it doesn't need MySQL. `src/test/resources/config/application.yml` overrides only what differs from the main `application.yml`: profile `test` (so `dev` / `prod` are not loaded), the H2 datasource and the passwords of the default accounts used by the security tests.
+`./mvnw test` uses an in-memory H2 database, so it doesn't need MySQL. `src/test/resources/config/application.yml` overrides only what differs from the main `application.yml`: profile `test` (so `dev` / `prod` are not loaded), the H2 datasource with `ddl-auto: create-drop`, and the passwords of the default accounts used by the security tests.
 
 ## Stop
 

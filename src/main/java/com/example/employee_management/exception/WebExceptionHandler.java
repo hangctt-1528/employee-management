@@ -31,6 +31,12 @@ public class WebExceptionHandler {
 				"Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'", request.getRequestURI());
 	}
 
+	// e.g. /employees/list?size=500
+	@ExceptionHandler(InvalidPagingException.class)
+	public ModelAndView handleInvalidPaging(InvalidPagingException ex, HttpServletRequest request) {
+		return errorPage(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
+	}
+
 	// From @PreAuthorize; without it the Exception handler below would show 500
 	@ExceptionHandler(AccessDeniedException.class)
 	public ModelAndView handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {

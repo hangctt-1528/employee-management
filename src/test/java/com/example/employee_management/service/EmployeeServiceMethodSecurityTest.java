@@ -43,7 +43,7 @@ class EmployeeServiceMethodSecurityTest {
 	@Test
 	@WithMockUser(roles = "USER")
 	void userCanStillRead() {
-		employeeService.getAllEmployees(); // no exception: read methods have no @PreAuthorize
+		employeeService.getEmployeePage(null, null, 0, 10); // no exception: read methods have no @PreAuthorize
 	}
 
 }

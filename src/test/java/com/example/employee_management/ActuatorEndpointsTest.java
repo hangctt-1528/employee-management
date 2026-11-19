@@ -15,7 +15,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 // The Actuator endpoints opened by management.endpoints.web.exposure.include
-// (the copy in src/test/resources/application.yml). Lab 9: health is open, the others need ADMIN.
+// (application.yml; tests run with profile "test"). Lab 9: health is open, the others need ADMIN.
 @SpringBootTest
 @AutoConfigureMockMvc
 @WithMockUser(roles = "ADMIN") // default for the tests below; some tests override it

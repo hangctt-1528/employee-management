@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -53,6 +52,12 @@ public class GlobalExceptionHandler {
 		return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
 	}
 
+	// Bad page or size, e.g. ?size=500
+	@ExceptionHandler(InvalidPagingException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidPaging(InvalidPagingException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+	}
+
 	// ---- Bad requests detected by Spring ----
 
 	// @Valid failed: the BindingResult inside the exception lists every invalid field
@@ -98,9 +103,15 @@ public class GlobalExceptionHandler {
 		return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type must be application/json", request);
 	}
 
-	// produces = JSON: a browser asking for HTML (e.g. /employees/nope) gets Spring Boot's HTML error page instead
-	@ExceptionHandler(value = NoResourceFoundException.class, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+	// JSON only for /api/** and /actuator/**. For a web URL (e.g. /employees/nope) the same exception is thrown
+	// again, so Spring answers 404 and Spring Boot shows templates/error.html.
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request)
+			throws NoResourceFoundException {
+		String uri = request.getRequestURI();
+		if (!uri.startsWith("/api/") && !uri.startsWith("/actuator/")) {
+			throw ex;
+		}
 		return buildResponse(HttpStatus.NOT_FOUND, "No endpoint at this URL", request);
 	}
 
@@ -136,7 +147,7 @@ public class GlobalExceptionHandler {
 
 	// ---- Anything else: 500 with a fixed message (never show internal details to the client) ----
 
-	@ExceptionHandler(value = Exception.class, produces = MediaType.APPLICATION_JSON_VALUE)
+	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
 		// the exception is the last argument, so the log also has the stack trace (docker compose logs app)
 		logger.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);

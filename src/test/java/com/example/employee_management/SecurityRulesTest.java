@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.response.SecurityMoc
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -274,8 +275,12 @@ class SecurityRulesTest {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").value("No endpoint at this URL"));
 
-		mockMvc.perform(get("/employees/nope").with(user("user").roles("USER")).accept(MediaType.TEXT_HTML))
-				.andExpect(status().isNotFound());
+		// The Accept header a real browser sends (it ends with */*, which also matches JSON)
+		mockMvc.perform(get("/employees/nope").with(user("user").roles("USER"))
+						.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"))
+				.andExpect(status().isNotFound())
+				// no JSON body: Spring sends a 404 error, which Spring Boot turns into templates/error.html
+				.andExpect(content().string(""));
 		assertFalse(output.getOut().contains("Failure in @ExceptionHandler"));
 	}
 

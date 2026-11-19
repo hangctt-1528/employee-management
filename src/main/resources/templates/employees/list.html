@@ -13,10 +13,11 @@
 <!-- Flash message after a successful add -->
 <p class="success" th:if="${successMessage}" th:text="${successMessage}">Employee was added.</p>
 
-<p th:if="${#lists.isEmpty(employees)}">No employees yet.</p>
+<p th:if="${employeePage.totalElements == 0}">No employees yet.</p>
 
-<div th:unless="${#lists.isEmpty(employees)}">
-    <table th:replace="~{fragments :: employeeTable(${employees})}"></table>
+<div th:unless="${#lists.isEmpty(employeePage.content)}">
+    <table th:replace="~{fragments :: employeeTable(${employeePage.content})}"></table>
 </div>
+<div th:replace="~{fragments :: pagination(${employeePage}, ${pagePath})}"></div>
 </body>
 </html>
