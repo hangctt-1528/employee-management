@@ -7,6 +7,25 @@ body {
     margin-right: 16px;
 }
 
+.menu .user {
+    margin-left: 16px;
+}
+
+.inline-form {
+    display: inline;
+    margin-left: 8px;
+}
+
+.field label {
+    display: inline-block;
+    width: 140px;
+}
+
+.hint {
+    color: #555;
+    font-size: 0.9em;
+}
+
 table {
     border-collapse: collapse;
     margin-top: 12px;
@@ -24,11 +43,6 @@ th {
 
 .field {
     margin-bottom: 12px;
-}
-
-.field label {
-    display: inline-block;
-    width: 100px;
 }
 
 .error {

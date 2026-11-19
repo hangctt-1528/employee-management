@@ -10,23 +10,43 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 // The Actuator endpoints opened by management.endpoints.web.exposure.include
-// (the copy in src/test/resources/application.yml).
+// (the copy in src/test/resources/application.yml). Lab 9: health is open, the others need ADMIN.
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(roles = "ADMIN") // default for the tests below; some tests override it
 class ActuatorEndpointsTest {
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@Test
-	void healthIsUpWithDatabaseDetails() throws Exception {
+	void healthIsUpWithDatabaseDetailsForAdmin() throws Exception {
 		mockMvc.perform(get("/actuator/health"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
-				.andExpect(jsonPath("$.components.db.status").value("UP")); // shown thanks to show-details: always
+				.andExpect(jsonPath("$.components.db.status").value("UP")); // show-details: when-authorized
+	}
+
+	@Test
+	@WithAnonymousUser
+	void healthIsOpenButShowsOnlyTheStatus() throws Exception {
+		mockMvc.perform(get("/actuator/health"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("UP"))
+				.andExpect(jsonPath("$.components").doesNotExist());
+	}
+
+	@Test
+	@WithMockUser(roles = "USER")
+	void healthShowsNoDetailsToUser() throws Exception {
+		mockMvc.perform(get("/actuator/health"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.components").doesNotExist());
 	}
 
 	@Test
@@ -42,6 +62,22 @@ class ActuatorEndpointsTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.name").value("jvm.memory.used"))
 				.andExpect(jsonPath("$.measurements[0].statistic").value("VALUE"));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void metricsNeedALogin() throws Exception {
+		mockMvc.perform(get("/actuator/metrics"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.status").value(401));
+	}
+
+	@Test
+	@WithMockUser(roles = "USER")
+	void metricsAreForbiddenForUser() throws Exception {
+		mockMvc.perform(get("/actuator/metrics"))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.status").value(403));
 	}
 
 	@Test

@@ -15,6 +15,14 @@ spring:
     # Reload templates without restarting the app
     cache: false
 
+app:
+  security:
+    # Default accounts, used only when they are created (development values)
+    admin-password: "${APP_ADMIN_PASSWORD:admin123}"
+    user-password: "${APP_USER_PASSWORD:user1234}"
+    # JWT signing key, at least 32 characters (development value)
+    jwt-secret: "${APP_JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}"
+
 logging:
   level:
     com.example.employee_management: DEBUG

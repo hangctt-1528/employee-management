@@ -12,6 +12,13 @@ spring:
       ddl-auto: update
     show-sql: false
 
+app:
+  security:
+    # No defaults: set in docker-compose.yml
+    admin-password: "${APP_ADMIN_PASSWORD}"
+    user-password: "${APP_USER_PASSWORD}"
+    jwt-secret: "${APP_JWT_SECRET}"
+
 logging:
   level:
     com.example.employee_management: INFO

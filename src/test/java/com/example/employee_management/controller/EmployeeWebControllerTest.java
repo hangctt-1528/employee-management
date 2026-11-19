@@ -7,10 +7,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,9 +28,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.employee_management.config.JwtConfig;
+import com.example.employee_management.config.SecurityConfig;
 import com.example.employee_management.dto.DepartmentResponse;
 import com.example.employee_management.dto.EmployeeRequest;
 import com.example.employee_management.dto.EmployeeResponse;
@@ -39,6 +47,8 @@ import com.example.employee_management.service.EmployeeService;
 
 // @WebMvcTest also starts Thymeleaf, so the tests check the view name, the model and the rendered HTML.
 @WebMvcTest(EmployeeWebController.class)
+@Import({ SecurityConfig.class, JwtConfig.class }) // Lab 9: our security rules, not the default ones
+@WithMockUser(roles = "ADMIN") // every request runs as a logged-in ADMIN unless a test says otherwise
 @ExtendWith(OutputCaptureExtension.class) // lets a test method take CapturedOutput (what was printed to the console)
 class EmployeeWebControllerTest {
 
@@ -126,7 +136,7 @@ class EmployeeWebControllerTest {
 		when(employeeService.addEmployee(any(EmployeeRequest.class)))
 				.thenReturn(new EmployeeResponse(1L, "Nguyen Van An", "an@example.com", 1L, "IT"));
 
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "nguyen van an")
 						.param("email", "an@example.com")
 						.param("departmentId", "1"))
@@ -138,7 +148,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void blankNameShowsFormAgainWithError() throws Exception {
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "  ")
 						.param("email", "an@example.com")
 						.param("departmentId", "1"))
@@ -152,7 +162,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void invalidEmailShowsError() throws Exception {
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "an")
 						.param("email", "not-an-email")
 						.param("departmentId", "1"))
@@ -163,7 +173,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void missingDepartmentShowsError() throws Exception {
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "an")
 						.param("email", "an@example.com")
 						.param("departmentId", ""))
@@ -174,7 +184,7 @@ class EmployeeWebControllerTest {
 
 	@Test
 	void selectedDepartmentIsKeptAfterError() throws Exception {
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "")
 						.param("email", "an@example.com")
 						.param("departmentId", "2"))
@@ -186,7 +196,7 @@ class EmployeeWebControllerTest {
 		when(employeeService.addEmployee(any(EmployeeRequest.class)))
 				.thenThrow(new DuplicateEmailException("an@example.com"));
 
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "an")
 						.param("email", "an@example.com")
 						.param("departmentId", "1"))
@@ -201,7 +211,7 @@ class EmployeeWebControllerTest {
 		when(employeeService.addEmployee(any(EmployeeRequest.class)))
 				.thenThrow(new DepartmentNotFoundException(9L));
 
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "an")
 						.param("email", "an@example.com")
 						.param("departmentId", "9"))
@@ -284,6 +294,70 @@ class EmployeeWebControllerTest {
 		assertTrue(log.contains("ERROR"));
 		assertTrue(log.contains("Unexpected error on GET /employees/list"));
 		assertTrue(log.contains("secret database detail"));
+	}
+
+	// ---- Lab 9: roles ----
+
+	@Test
+	@WithMockUser(username = "user", roles = "USER")
+	void userSeesTheListWithoutTheAddLink() throws Exception {
+		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+
+		mockMvc.perform(get("/employees/list"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Logged in as")))
+				.andExpect(content().string(containsString("<b>user</b>")))
+				.andExpect(content().string(not(containsString("href=\"/employees/add\""))));
+	}
+
+	@Test
+	void adminSeesTheAddLinkAndTheLogoutForm() throws Exception {
+		when(employeeService.getAllEmployees()).thenReturn(oneEmployee());
+
+		mockMvc.perform(get("/employees/list"))
+				.andExpect(content().string(containsString("href=\"/employees/add\"")))
+				.andExpect(content().string(containsString("action=\"/logout\"")));
+	}
+
+	@Test
+	@WithMockUser(roles = "USER")
+	void userCannotOpenTheAddPage() throws Exception {
+		mockMvc.perform(get("/employees/add"))
+				.andExpect(status().isForbidden())
+				.andExpect(forwardedUrl("/access-denied"));
+	}
+
+	@Test
+	@WithMockUser(roles = "USER")
+	void userCannotPostTheAddForm() throws Exception {
+		mockMvc.perform(post("/employees/add").with(csrf())
+						.param("name", "an")
+						.param("email", "an@example.com")
+						.param("departmentId", "1"))
+				.andExpect(status().isForbidden());
+		verify(employeeService, never()).addEmployee(any(EmployeeRequest.class));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void visitorIsSentToTheLoginPage() throws Exception {
+		mockMvc.perform(get("/employees/list"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/login"));
+	}
+
+	// @PreAuthorize in the service throws AccessDeniedException: the page must say 403, not 500
+	@Test
+	void accessDeniedFromTheServiceShows403Page() throws Exception {
+		when(employeeService.addEmployee(any(EmployeeRequest.class))).thenThrow(new AccessDeniedException("denied"));
+
+		mockMvc.perform(post("/employees/add").with(csrf())
+						.param("name", "an")
+						.param("email", "an@example.com")
+						.param("departmentId", "1"))
+				.andExpect(status().isForbidden())
+				.andExpect(view().name("error"))
+				.andExpect(content().string(containsString("You do not have permission to do this")));
 	}
 
 }

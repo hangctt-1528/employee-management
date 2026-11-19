@@ -1,6 +1,7 @@
 package com.example.employee_management.controller;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -18,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @DirtiesContext // this test saves an employee; give later tests a fresh database
+@WithMockUser(roles = "ADMIN") // Lab 9: adding employees needs the ADMIN role
 class EmployeeWebPagesIntegrationTest {
 
 	@Autowired
@@ -26,7 +29,7 @@ class EmployeeWebPagesIntegrationTest {
 	@Test
 	void addThenListThenSearch() throws Exception {
 		// DataSeeder created IT (id 1), HR (id 2), Sales (id 3)
-		mockMvc.perform(post("/employees/add")
+		mockMvc.perform(post("/employees/add").with(csrf())
 						.param("name", "tran thi binh")
 						.param("email", "binh@example.com")
 						.param("departmentId", "2"))

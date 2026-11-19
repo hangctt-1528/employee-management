@@ -3,11 +3,22 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- Menu shown at the top of every page -->
+<!-- Menu of every page; currentUsername/admin from CurrentUserModelAdvice. Logout is a POST form (CSRF). -->
 <nav th:fragment="header" class="menu">
-    <a th:href="@{/employees/list}">Employee list</a>
-    <a th:href="@{/employees/add}">Add employee</a>
-    <a th:href="@{/employees/search}">Search</a>
+    <th:block th:if="${currentUsername}">
+        <a th:href="@{/employees/list}">Employee list</a>
+        <a th:if="${admin}" th:href="@{/employees/add}">Add employee</a>
+        <a th:href="@{/employees/search}">Search</a>
+        <span class="user">Logged in as <b th:text="${currentUsername}">user</b>
+            (<span th:if="${admin}">ADMIN</span><span th:unless="${admin}">USER</span>)</span>
+        <form class="inline-form" th:action="@{/logout}" method="post">
+            <button type="submit">Log out</button>
+        </form>
+    </th:block>
+    <th:block th:unless="${currentUsername}">
+        <a th:href="@{/login}">Log in</a>
+        <a th:href="@{/register}">Register</a>
+    </th:block>
 </nav>
 
 <!-- Employee table, used by the list page and the search page -->

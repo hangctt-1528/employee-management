@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AppConfig {
 
 	// This @Bean method tells Spring how to create it; Spring keeps one shared instance.
+	// Used to check passwords at login and to hash them (UserService, UserSeeder).
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();

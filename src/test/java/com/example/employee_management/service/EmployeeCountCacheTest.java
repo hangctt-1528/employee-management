@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
 import com.example.employee_management.dto.EmployeeCountResponse;
@@ -16,6 +17,7 @@ import com.example.employee_management.repository.DepartmentRepository;
 // ReportService here is the Spring proxy, so @Cacheable / @CacheEvict work.
 @SpringBootTest
 @DirtiesContext // this test saves an employee; give later tests a fresh database
+@WithMockUser(roles = "ADMIN") // Lab 9: adding employees needs the ADMIN role
 class EmployeeCountCacheTest {
 
 	@Autowired

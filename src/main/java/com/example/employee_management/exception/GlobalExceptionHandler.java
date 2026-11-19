@@ -5,6 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import com.example.employee_management.controller.AuthWebController;
 import com.example.employee_management.dto.ErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -94,6 +98,28 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(NoResourceFoundException.class)
 	public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
 		return buildResponse(HttpStatus.NOT_FOUND, "No endpoint at this URL", request);
+	}
+
+	// ---- Security: from the filters (via RestAuthenticationEntryPoint / RestAccessDeniedHandler) or controllers ----
+
+	// Wrong username or password
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password", request);
+	}
+
+	// No credentials, or a bad / expired token
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.UNAUTHORIZED,
+				"Authentication required: use HTTP Basic or a Bearer token from POST /api/auth/login", request);
+	}
+
+	// Role not allowed
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+		logger.warn("Access denied on {} {}", request.getMethod(), request.getRequestURI());
+		return buildResponse(HttpStatus.FORBIDDEN, AuthWebController.ACCESS_DENIED_MESSAGE, request);
 	}
 
 	// ---- Anything else: 500 with a fixed message (never show internal details to the client) ----

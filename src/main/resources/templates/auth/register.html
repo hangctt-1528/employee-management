@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:replace="~{fragments :: header}"></nav>
+
+<h1>Register</h1>
+
+<!-- Bound to registerForm; the new account is always USER -->
+<form th:action="@{/register}" th:object="${registerForm}" method="post">
+    <div class="field">
+        <label for="username">Username</label>
+        <input type="text" th:field="*{username}">
+        <span class="error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}">Username error</span>
+    </div>
+
+    <!-- Password inputs are never refilled -->
+    <div class="field">
+        <label for="password">Password</label>
+        <input type="password" th:field="*{password}">
+        <span class="error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</span>
+    </div>
+
+    <div class="field">
+        <label for="confirmPassword">Confirm password</label>
+        <input type="password" th:field="*{confirmPassword}">
+        <span class="error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}">Confirm error</span>
+    </div>
+
+    <p class="hint">Username: 3 to 50 letters, digits, '.', '_' or '-'. Password: 8 to 72 characters (at most 72 bytes).</p>
+
+    <button type="submit">Create account</button>
+</form>
+
+<p>Already have an account? <a th:href="@{/login}">Log in</a></p>
+</body>
+</html>

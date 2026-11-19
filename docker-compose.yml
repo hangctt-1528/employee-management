@@ -31,6 +31,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/employee_db?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: employee
       SPRING_DATASOURCE_PASSWORD: employee
+      # Passwords of the default accounts, used only the first time they are created,
+      # and the key that signs the JWTs (at least 32 characters).
+      # Development values: change them for a real deployment.
+      APP_ADMIN_PASSWORD: admin123
+      APP_USER_PASSWORD: user1234
+      APP_JWT_SECRET: compose-secret-change-me-0123456789abcdef
     depends_on:
       db:
         condition: service_healthy

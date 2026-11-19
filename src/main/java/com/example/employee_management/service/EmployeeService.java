@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.example.employee_management.dto.EmployeeRequest;
@@ -18,6 +19,7 @@ import com.example.employee_management.exception.EmployeeNotFoundException;
 import com.example.employee_management.repository.DepartmentRepository;
 import com.example.employee_management.repository.EmployeeRepository;
 
+// @PreAuthorize: second check after the URL rules, only ADMIN can change employees.
 @Service
 public class EmployeeService {
 
@@ -65,6 +67,7 @@ public class EmployeeService {
 	}
 
 	// Throws DepartmentNotFoundException (-> 400) or DuplicateEmailException (-> 409)
+	@PreAuthorize("hasRole('ADMIN')")
 	public EmployeeResponse addEmployee(EmployeeRequest request) {
 		logger.debug("Adding employee: departmentId={}", request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
@@ -82,6 +85,7 @@ public class EmployeeService {
 
 	// Throws DepartmentNotFoundException (-> 400), EmployeeNotFoundException (-> 404)
 	// or DuplicateEmailException (-> 409), checked in that order
+	@PreAuthorize("hasRole('ADMIN')")
 	public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
 		logger.debug("Updating employee: id={}, departmentId={}", id, request.getDepartmentId());
 		Department department = findDepartment(request.getDepartmentId());
@@ -100,6 +104,7 @@ public class EmployeeService {
 	}
 
 	// Throws EmployeeNotFoundException (-> 404) when the id does not exist
+	@PreAuthorize("hasRole('ADMIN')")
 	public void deleteEmployee(Long id) {
 		logger.debug("Deleting employee: id={}", id);
 		if (!employeeRepository.existsById(id)) {
